@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "11c8964368cf6db7717f",
+  "position": {
+    "x": 106.66666666666666,
+    "y": 96.296296296296291,
+    "z": 1,
+    "height": 300.7407407407407,
+    "width": 299.25925925925924
+  },
+  "visual": {
+    "visualType": "card",
+    "autoSelectVisualType": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "30-Day Readmission Rate %"
+                }
+              },
+              "queryRef": "_Measures.30-Day Readmission Rate %",
+              "nativeQueryRef": "30-Day Readmission Rate %"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

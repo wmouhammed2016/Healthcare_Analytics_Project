@@ -8,9 +8,10 @@ Trash
 100Records_SDG/*
 1MRecords_SDG/*
 !2Parquet.py
-!PROCEDURE_1M_GENERATION.md
+PROCEDURE_1M_GENERATION.md
 !sdg_engine_1m.py
 !sdg_generation.ipynb
+
 
 # Ignore python cache folders
 Codebase/__pycache__/

@@ -7,7 +7,7 @@ table _Measures
 			// Base count of all encounters in the current filter context.
 			// Used as the universal denominator for rate-based KPIs across all 5 domains.
 			// Returns BLANK (not zero) when no rows exist to prevent misleading zero values in visuals.
-			VAR TotalRows = COUNTROWS('gold vw_fact_encounter')
+			VAR TotalRows = DISTINCTCOUNT('gold vw_fact_encounter'[encounter_id])
 			RETURN
 			    IF(TotalRows = 0, BLANK(), TotalRows)
 		formatString: #,##0
@@ -94,7 +94,7 @@ table _Measures
 			// Drill by Diagnosis, Unit, and Payer to identify cohorts driving the rate.
 			VAR ReadmittedEncounters =
 			    CALCULATE(
-			        COUNTROWS('gold vw_fact_encounter'),
+			        [# Total Encounters],
 			        'gold vw_fact_encounter'[readmission_30d_flag] = 1
 			    )
 			VAR TotalEncounters = [# Total Encounters]
@@ -114,7 +114,7 @@ table _Measures
 			// CMS HACRP target: minimize toward 0. Bottom 25% of hospitals face penalty adjustment.
 			VAR HAIEncounters =
 			    CALCULATE(
-			        COUNTROWS('gold vw_fact_encounter'),
+			        [# Total Encounters],
 			        'gold vw_fact_encounter'[safety_incident_flag] = 1,
 			        'gold vw_dim_safety_incident'[is_hac_eligible] = 1
 			    )
@@ -1249,6 +1249,11 @@ table _Measures
 		formatString: 0.0
 		displayFolder: 01 Clinical\Time Intelligence
 		lineageTag: 69a9f128-aa23-4a03-9613-79b69d2d908d
+
+	measure 'Total Encounters Test' = DISTINCTCOUNT('gold vw_fact_encounter'[encounter_id])
+		formatString: 0
+		displayFolder: Trial\Clinical
+		lineageTag: d42b7ed2-d853-4439-a028-1aefb8f7cf24
 
 	partition _Measures = m
 		mode: import

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "b40ecbc5cf19356474cd",
+  "position": {
+    "x": 478.14814814814815,
+    "y": 382.59259259259261,
+    "z": 3,
+    "height": 300,
+    "width": 300
+  },
+  "visual": {
+    "visualType": "card",
+    "autoSelectVisualType": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "CAHPS Overall Patient Experience Score"
+                }
+              },
+              "queryRef": "_Measures.CAHPS Overall Patient Experience Score",
+              "nativeQueryRef": "CAHPS Overall Patient Experience Score"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

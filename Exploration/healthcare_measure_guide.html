@@ -1,0 +1,1864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Analytics — DAX Measure → Visual Guide</title>
+<style>
+/* ===== DESIGN TOKENS (same palette as dashboard) ===== */
+:root {
+  --bg: #FAFCFE;
+  --card: #FFFFFF;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text: #1E293B;
+  --text-sec: #64748B;
+  --text-light: #94A3B8;
+  --primary: #1976D2;
+  --primary-light: #E3F2FD;
+  --primary-dark: #0D47A1;
+  --green: #2E7D32;
+  --green-light: #E8F5E9;
+  --amber: #ED6C02;
+  --amber-light: #FFF3E0;
+  --red: #C62828;
+  --red-light: #FFEBEE;
+  --clinical: #1565C0;
+  --operational: #2E7D32;
+  --financial: #E65100;
+  --hr: #6A1B9A;
+  --supply: #00838F;
+  --utility: #37474F;
+  --exec-col: #0D47A1;
+  --rag-col: #B71C1C;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(15,76,92,.07), 0 1px 2px rgba(15,76,92,.05);
+  --shadow-md: 0 4px 14px rgba(15,76,92,.11);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+  background: linear-gradient(135deg, #0D47A1 0%, #1976D2 60%, #1565C0 100%);
+  color: #fff;
+  padding: 16px 32px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 10px rgba(13,71,161,.22);
+  position: sticky; top: 0; z-index: 200;
+}
+.topbar-brand { display: flex; align-items: center; gap: 14px; }
+.topbar-logo {
+  width: 40px; height: 40px;
+  background: rgba(255,255,255,.16);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.topbar h1 { font-size: 1.1rem; font-weight: 700; letter-spacing: .15px; }
+.topbar .sub { font-size: .76rem; opacity: .85; margin-top: 1px; }
+.topbar-meta {
+  text-align: right;
+  font-size: .74rem;
+  opacity: .9;
+  line-height: 1.6;
+}
+.topbar-pill {
+  display: inline-block;
+  background: rgba(255,255,255,.2);
+  padding: 2px 10px; border-radius: 12px;
+  font-weight: 600; font-size: .72rem;
+  margin-left: 5px;
+}
+
+/* ===== TAB NAV ===== */
+.tabnav {
+  display: flex; gap: 0;
+  background: #fff;
+  border-bottom: 2px solid var(--border);
+  padding: 0 24px;
+  position: sticky; top: 72px; z-index: 199;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.tabnav::-webkit-scrollbar { display: none; }
+.tabbtn {
+  padding: 13px 18px;
+  background: none; border: none;
+  border-bottom: 3px solid transparent;
+  font-size: .85rem; font-weight: 600;
+  color: var(--text-sec);
+  cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+  display: flex; align-items: center; gap: 7px;
+}
+.tabbtn:hover { color: var(--primary); background: var(--primary-light); }
+.tabbtn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tabbtn .dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.count-pill {
+  background: #F1F5F9; color: var(--text-sec);
+  font-size: .68rem; font-weight: 700;
+  padding: 1px 7px; border-radius: 10px;
+}
+.tabbtn.active .count-pill { background: var(--primary-light); color: var(--primary); }
+
+/* ===== TAB PANELS ===== */
+.tabpanel { display: none; padding: 28px 32px 56px; }
+.tabpanel.active { display: block; animation: fadeUp .22s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:translateY(0); } }
+
+/* ===== SECTION HEADERS ===== */
+.domain-header {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+.domain-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.domain-title { font-size: 1.3rem; font-weight: 700; }
+.domain-desc { font-size: .85rem; color: var(--text-sec); margin-top: 2px; }
+.domain-count { margin-left: auto; font-size: .8rem; color: var(--text-sec); text-align: right; }
+.domain-count strong { color: var(--text); font-size: 1.5rem; font-weight: 700; display: block; }
+
+/* ===== VISUAL LEGEND ===== */
+.legend-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  box-shadow: var(--shadow);
+}
+.legend-title { font-size: .78rem; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: .5px; margin-right: 4px; }
+.vbadge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border-radius: 14px;
+  font-size: .74rem; font-weight: 600;
+  border: 1.5px solid;
+}
+.vbadge.tile    { background: #E3F2FD; color: #0D47A1; border-color: #90CAF9; }
+.vbadge.line    { background: #E8F5E9; color: #1B5E20; border-color: #A5D6A7; }
+.vbadge.bar     { background: #FFF8E1; color: #E65100; border-color: #FFCC80; }
+.vbadge.donut   { background: #F3E5F5; color: #4A148C; border-color: #CE93D8; }
+.vbadge.radar   { background: #E0F2F1; color: #004D40; border-color: #80CBC4; }
+.vbadge.table   { background: #FAFAFA; color: #37474F; border-color: #B0BEC5; }
+.vbadge.spark   { background: #FFF3E0; color: #BF360C; border-color: #FFAB91; }
+.vbadge.rag     { background: #FFEBEE; color: #B71C1C; border-color: #EF9A9A; }
+.vbadge.exec    { background: #E8EAF6; color: #1A237E; border-color: #9FA8DA; }
+.vbadge.denom   { background: #ECEFF1; color: #37474F; border-color: #90A4AE; }
+.vbadge.ti      { background: #E0F7FA; color: #006064; border-color: #80DEEA; }
+
+/* ===== ANATOMY PANEL ===== */
+.anatomy-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 26px;
+  box-shadow: var(--shadow);
+}
+.anatomy-section h3 {
+  font-size: .95rem; font-weight: 700;
+  margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+}
+.anatomy-section .asub {
+  font-size: .76rem; color: var(--text-sec);
+  margin-bottom: 16px;
+}
+.anatomy-grid {
+  display: grid;
+  gap: 10px;
+}
+/* KPI hero row: 4 tiles */
+.anatomy-tiles { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+/* Charts row: 2 charts */
+.anatomy-charts { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin-top: 10px; }
+.anatomy-charts.even { grid-template-columns: 1fr 1fr; }
+/* Table: full width */
+.anatomy-table { margin-top: 10px; }
+/* Exec row: 5 tiles + radar + trend + scorecard */
+.anatomy-exec-tiles { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+.anatomy-exec-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+/* Utility: full-width flow boxes */
+.anatomy-util { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 8px; }
+
+/* Visual blocks */
+.ablock {
+  border-radius: 8px;
+  padding: 9px 12px;
+  border: 1.5px solid;
+  position: relative;
+  cursor: default;
+  transition: transform .12s, box-shadow .12s;
+}
+.ablock:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.ablock-label {
+  font-size: .68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  margin-bottom: 5px;
+  opacity: .75;
+}
+.ablock-measures {
+  display: flex; flex-direction: column; gap: 3px;
+}
+.ablock-measure {
+  font-size: .72rem; font-weight: 600;
+  line-height: 1.3;
+  display: flex; align-items: flex-start; gap: 4px;
+}
+.ablock-measure::before {
+  content: '◆';
+  font-size: .5rem;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* Block color variants */
+.ablock.tile-block    { background: #EFF6FF; border-color: #BFDBFE; color: #1E3A8A; }
+.ablock.chart-line    { background: #F0FDF4; border-color: #BBF7D0; color: #14532D; }
+.ablock.chart-bar     { background: #FFF7ED; border-color: #FED7AA; color: #7C2D12; }
+.ablock.chart-donut   { background: #FAF5FF; border-color: #E9D5FF; color: #581C87; }
+.ablock.chart-radar   { background: #ECFDF5; border-color: #A7F3D0; color: #064E3B; }
+.ablock.tbl-block     { background: #F8FAFC; border-color: #CBD5E1; color: #334155; }
+.ablock.exec-block    { background: #EEF2FF; border-color: #C7D2FE; color: #312E81; }
+.ablock.rag-block     { background: #FFF1F2; border-color: #FECACA; color: #991B1B; }
+.ablock.util-block    { background: #F1F5F9; border-color: #CBD5E1; color: #334155; }
+.ablock.spark-block   { background: #FFFBEB; border-color: #FDE68A; color: #78350F; }
+
+/* ===== MEASURE CARDS ===== */
+.search-wrap {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 18px;
+}
+.search-input {
+  flex: 1;
+  padding: 9px 14px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 8px;
+  font-size: .85rem;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+  transition: border-color .15s;
+}
+.search-input:focus { border-color: var(--primary); }
+.search-count { font-size: .8rem; color: var(--text-sec); white-space: nowrap; }
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 14px;
+}
+.mcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 15px 16px;
+  box-shadow: var(--shadow);
+  transition: box-shadow .2s, transform .15s;
+  cursor: pointer;
+}
+.mcard:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.mcard.hidden { display: none; }
+
+.mcard-folder {
+  font-size: .68rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text-light); margin-bottom: 5px;
+}
+.mcard-name {
+  font-size: .94rem; font-weight: 700;
+  color: var(--text); margin-bottom: 8px; line-height: 1.3;
+}
+.mcard-badges { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+.mcard-desc {
+  font-size: .8rem; color: var(--text-sec);
+  line-height: 1.55; margin-bottom: 10px;
+}
+.mcard-target {
+  font-size: .78rem;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 5px 10px; border-radius: 6px;
+  display: flex; gap: 6px; align-items: flex-start;
+}
+.mcard-target strong { flex-shrink: 0; }
+.mcard-deps {
+  margin-top: 8px;
+  font-size: .75rem;
+  color: var(--text-sec);
+  display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+}
+.dep-tag {
+  background: #F1F5F9; color: var(--utility);
+  padding: 2px 8px; border-radius: 10px;
+  font-size: .7rem; font-weight: 600;
+  border: 1px solid var(--border-strong);
+}
+
+/* domain color overrides */
+.mcard.d-clinical    { border-left-color: var(--clinical); }
+.mcard.d-operational { border-left-color: var(--operational); }
+.mcard.d-financial   { border-left-color: var(--financial); }
+.mcard.d-hr          { border-left-color: var(--hr); }
+.mcard.d-supply      { border-left-color: var(--supply); }
+.mcard.d-utility     { border-left-color: var(--utility); }
+.mcard.d-exec        { border-left-color: var(--exec-col); }
+.mcard.d-rag         { border-left-color: var(--rag-col); }
+.mcard.d-ti          { border-left-color: #00838F; }
+
+/* ===== INTRO TAB ===== */
+.intro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+}
+.intro-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+.intro-card .ic-icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 12px;
+}
+.intro-card h4 { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.intro-card p { font-size: .83rem; color: var(--text-sec); line-height: 1.55; }
+.intro-hero {
+  background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.intro-hero h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; }
+.intro-hero p { font-size: .9rem; opacity: .9; max-width: 680px; line-height: 1.6; }
+.intro-stats {
+  display: flex; gap: 32px; margin-top: 20px;
+}
+.intro-stat { text-align: center; }
+.intro-stat .sv { font-size: 2rem; font-weight: 800; }
+.intro-stat .sl { font-size: .78rem; opacity: .85; margin-top: 2px; }
+
+/* ===== HOW-TO FLOW DIAGRAM ===== */
+.flow-diagram {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: var(--shadow);
+  margin-bottom: 24px;
+}
+.flow-diagram h3 { font-size: .95rem; font-weight: 700; margin-bottom: 4px; }
+.flow-diagram .fsub { font-size: .76rem; color: var(--text-sec); margin-bottom: 20px; }
+.flow-row {
+  display: flex; align-items: stretch; gap: 0;
+  margin-bottom: 12px;
+}
+.flow-node {
+  background: #F1F5F9;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: .8rem; font-weight: 600;
+  text-align: center;
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 3px;
+  min-height: 54px;
+}
+.flow-node .fn-icon { font-size: 18px; }
+.flow-node .fn-label { font-size: .72rem; color: var(--text-sec); font-weight: 500; }
+.flow-arrow {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 6px; font-size: 1.2rem; color: var(--text-light);
+  flex-shrink: 0;
+}
+.flow-node.fn-util  { background: #ECEFF1; border-color: #B0BEC5; }
+.flow-node.fn-domain{ background: #E3F2FD; border-color: #90CAF9; color: var(--primary-dark); }
+.flow-node.fn-exec  { background: #E8EAF6; border-color: #9FA8DA; color: #1A237E; }
+.flow-node.fn-visual{ background: #E8F5E9; border-color: #A5D6A7; color: #1B5E20; }
+
+/* ===== FOOTER ===== */
+.site-footer {
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 18px 32px;
+  font-size: .76rem;
+  color: var(--text-sec);
+  text-align: center;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 900px) {
+  .anatomy-tiles { grid-template-columns: repeat(2,1fr); }
+  .anatomy-exec-tiles { grid-template-columns: repeat(2,1fr); }
+  .anatomy-charts { grid-template-columns: 1fr; }
+  .cards-grid { grid-template-columns: 1fr; }
+  .tabpanel { padding: 18px 14px 40px; }
+  .topbar { padding: 12px 16px; }
+  .intro-stats { gap: 16px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== TOPBAR ===== -->
+<header class="topbar">
+  <div class="topbar-brand">
+    <div class="topbar-logo">📊</div>
+    <div>
+      <h1>Healthcare Analytics — Measure to Visual Guide</h1>
+      <div class="sub">Power BI DAX Measures · 5 Business Domains · Teaching Reference</div>
+    </div>
+  </div>
+  <div class="topbar-meta">
+    <div>75 measures · 7 display folders</div>
+    <div>Model: <span class="topbar-pill">Healthcare_Analytics</span> <span class="topbar-pill">localhost:50927</span></div>
+  </div>
+</header>
+
+<!-- ===== TAB NAVIGATION ===== -->
+<nav class="tabnav">
+  <button class="tabbtn active" data-tab="intro">
+    <span class="dot" style="background:#1976D2"></span>🎓 Guide Overview
+  </button>
+  <button class="tabbtn" data-tab="exec">
+    <span class="dot" style="background:#0D47A1"></span>🏥 Executive
+    <span class="count-pill">20</span>
+  </button>
+  <button class="tabbtn" data-tab="util">
+    <span class="dot" style="background:#37474F"></span>🔢 Utilities
+    <span class="count-pill">7</span>
+  </button>
+  <button class="tabbtn" data-tab="clinical">
+    <span class="dot" style="background:#1565C0"></span>⚕️ Clinical
+    <span class="count-pill">12</span>
+  </button>
+  <button class="tabbtn" data-tab="operational">
+    <span class="dot" style="background:#2E7D32"></span>⚙️ Operational
+    <span class="count-pill">9</span>
+  </button>
+  <button class="tabbtn" data-tab="financial">
+    <span class="dot" style="background:#E65100"></span>💰 Financial
+    <span class="count-pill">10</span>
+  </button>
+  <button class="tabbtn" data-tab="hr">
+    <span class="dot" style="background:#6A1B9A"></span>👥 HR &amp; Workforce
+    <span class="count-pill">9</span>
+  </button>
+  <button class="tabbtn" data-tab="supply">
+    <span class="dot" style="background:#00838F"></span>📦 Supply Chain
+    <span class="count-pill">7</span>
+  </button>
+</nav>
+
+<!-- ============================================================
+     INTRO TAB
+     ============================================================ -->
+<section class="tabpanel active" id="panel-intro">
+
+  <div class="intro-hero">
+    <h2>How DAX Measures Power Every Visual in the Dashboard</h2>
+    <p>This guide maps all <strong>75 Power BI DAX measures</strong> to the specific visual elements they populate across the Healthcare Analytics dashboard. Use it to understand <em>what each measure does</em>, <em>where it appears</em>, and <em>how it depends on utility measures</em> as its foundation.</p>
+    <div class="intro-stats">
+      <div class="intro-stat"><div class="sv">75</div><div class="sl">Total Measures</div></div>
+      <div class="intro-stat"><div class="sv">7</div><div class="sl">Display Folders</div></div>
+      <div class="intro-stat"><div class="sv">5</div><div class="sl">Business Domains</div></div>
+      <div class="intro-stat"><div class="sv">9</div><div class="sl">Visual Types</div></div>
+    </div>
+  </div>
+
+  <!-- Visual Type Legend -->
+  <div class="legend-bar" style="margin-top:16px">
+    <span class="legend-title">Visual Types:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge line">📈 Line Chart</span>
+    <span class="vbadge bar">📊 Bar Chart</span>
+    <span class="vbadge donut">🍩 Donut Chart</span>
+    <span class="vbadge radar">🕸️ Radar Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+    <span class="vbadge rag">🚦 RAG Status</span>
+    <span class="vbadge exec">🎯 Exec Tile</span>
+    <span class="vbadge denom">⚙️ Denominator</span>
+    <span class="vbadge ti">🕐 Time Intelligence</span>
+  </div>
+
+  <!-- Flow diagram -->
+  <div class="flow-diagram">
+    <h3>📐 Measure Architecture — How It All Connects</h3>
+    <div class="fsub">Follow this hierarchy: Utility base counts → Domain rate/KPI measures → Executive headline measures → Dashboard visuals</div>
+
+    <div class="flow-row">
+      <div class="flow-node fn-util">
+        <div class="fn-icon">🔢</div>
+        <div># Total Encounters</div>
+        <div class="fn-label">Utility denominator</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-domain">
+        <div class="fn-icon">⚕️</div>
+        <div>30-Day Readmission Rate %</div>
+        <div class="fn-label">Clinical domain measure</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-exec">
+        <div class="fn-icon">🎯</div>
+        <div>[EXEC] 30-Day Readmission Rate %</div>
+        <div class="fn-label">Executive headline</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-visual">
+        <div class="fn-icon">🟦</div>
+        <div>Executive Tile + RAG Badge</div>
+        <div class="fn-label">Dashboard visual</div>
+      </div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-node fn-util">
+        <div class="fn-icon">🔢</div>
+        <div># Total Patient Days</div>
+        <div class="fn-label">Utility denominator</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-domain">
+        <div class="fn-icon">🏥</div>
+        <div>HAI Incidence Rate per 1k Pt-Days</div>
+        <div class="fn-label">Clinical domain measure</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-domain" style="background:#FFF3E0;border-color:#FFCC80;color:#7C2D12">
+        <div class="fn-icon">📊</div>
+        <div>KPI Tile + KPI Table</div>
+        <div class="fn-label">Clinical page visuals</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-visual">
+        <div class="fn-icon">🚦</div>
+        <div>RAG — Bed Occupancy (cross-domain)</div>
+        <div class="fn-label">Exec scorecard status</div>
+      </div>
+    </div>
+
+    <div class="flow-row">
+      <div class="flow-node fn-util">
+        <div class="fn-icon">🔢</div>
+        <div># Unique Nurses</div>
+        <div class="fn-label">Utility denominator</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-domain" style="background:#F3E5F5;border-color:#E1BEE7;color:#4A148C">
+        <div class="fn-icon">👥</div>
+        <div>Burnout Prevalence % (Nurse-Level)</div>
+        <div class="fn-label">HR domain measure (AVERAGEX)</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-exec">
+        <div class="fn-icon">🎯</div>
+        <div>[EXEC] Burnout Prevalence %</div>
+        <div class="fn-label">Executive headline</div>
+      </div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node fn-visual">
+        <div class="fn-icon">🟦</div>
+        <div>Exec Tile · 📊 Bar Chart · 🚦 RAG</div>
+        <div class="fn-label">HR + Executive page</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Domain cards -->
+  <div class="intro-grid">
+    <div class="intro-card" onclick="switchTab('exec')">
+      <div class="ic-icon" style="background:#E8EAF6">🏥</div>
+      <h4 style="color:#0D47A1">Executive Overview</h4>
+      <p>20 measures: 5 EXEC headline KPIs (two versions each), 10 RAG status measures for conditional formatting. Powers the 5 big executive tiles, the radar chart, and the scorecard table.</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('util')">
+      <div class="ic-icon" style="background:#ECEFF1">🔢</div>
+      <h4 style="color:#37474F">Utility Measures</h4>
+      <p>7 foundational measures: 4 count denominators (#Encounters, #PatientDays, #Patients, #Nurses) and 3 financial accumulators. Every domain measure divides by one of these.</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('clinical')">
+      <div class="ic-icon" style="background:#E3F2FD">⚕️</div>
+      <h4 style="color:#1565C0">Clinical Analytics</h4>
+      <p>12 measures covering readmissions, HAI, LOS, HbA1c control, medication adherence, CAHPS, and 3 time-intelligence variants (YTD, inactive relationships).</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('operational')">
+      <div class="ic-icon" style="background:#E8F5E9">⚙️</div>
+      <h4 style="color:#2E7D32">Operational Analytics</h4>
+      <p>9 measures covering ER door-to-doctor time, bed occupancy, OR utilisation, LWBS, patient safety incidents, and HAC-eligible events.</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('financial')">
+      <div class="ic-icon" style="background:#FBE9E7">💰</div>
+      <h4 style="color:#E65100">Financial &amp; Revenue Cycle</h4>
+      <p>10 measures covering FWA detection (upcoding, duplicate, unbundling), allowed revenue, DRG case mix, operating margin, and 1 YTD time-intelligence variant.</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('hr')">
+      <div class="ic-icon" style="background:#F3E5F5">👥</div>
+      <h4 style="color:#6A1B9A">HR &amp; Workforce</h4>
+      <p>9 measures covering nurse burnout (MBI), turnover risk, overtime, nurse-to-patient ratio, float rate, and CAHPS communication/responsiveness scores.</p>
+    </div>
+    <div class="intro-card" onclick="switchTab('supply')">
+      <div class="ic-icon" style="background:#E0F2F1">📦</div>
+      <h4 style="color:#00838F">Supply Chain</h4>
+      <p>7 measures covering stockout risk, days of supply, kit lead time, supply cost as % of revenue, reorder point monitoring, and HIMSS EMRAM stage tracking.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     EXECUTIVE TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-exec">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#E8EAF6;font-size:22px">🏥</div>
+    <div>
+      <div class="domain-title" style="color:#0D47A1">Executive Overview</div>
+      <div class="domain-desc">Headline KPI tiles, RAG status measures, radar chart, trend chart, and executive scorecard table.</div>
+    </div>
+    <div class="domain-count"><strong>20</strong>measures in this folder</div>
+  </div>
+
+  <!-- Visual Type Legend -->
+  <div class="legend-bar">
+    <span class="legend-title">Visuals used:</span>
+    <span class="vbadge exec">🎯 Exec Tile</span>
+    <span class="vbadge radar">🕸️ Radar Chart</span>
+    <span class="vbadge line">📈 Trend Chart</span>
+    <span class="vbadge rag">🚦 RAG Status</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+    <span class="vbadge table">📋 Scorecard Table</span>
+  </div>
+
+  <!-- Dashboard Anatomy -->
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — Executive Page</h3>
+    <div class="asub">Every box below is a visual element. The ◆ labels show which Power BI measure populates it.</div>
+
+    <!-- 5 Executive Hero Tiles -->
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">Executive Hero Tiles (top row)</div>
+    <div class="anatomy-exec-tiles">
+      <div class="ablock exec-block">
+        <div class="ablock-label">Clinical Tile</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">EXEC — Readmission Rate %</div>
+          <div class="ablock-measure">[EXEC] 30-Day Readmission Rate %</div>
+          <div class="ablock-measure">[RAG] Readmission Status</div>
+        </div>
+      </div>
+      <div class="ablock exec-block">
+        <div class="ablock-label">Operational Tile</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">EXEC — Door-to-Doctor Time</div>
+          <div class="ablock-measure">[EXEC] Avg Door-to-Doctor Time</div>
+          <div class="ablock-measure">RAG — Bed Occupancy</div>
+        </div>
+      </div>
+      <div class="ablock exec-block">
+        <div class="ablock-label">Financial Tile</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">EXEC — FWA Detection Rate %</div>
+          <div class="ablock-measure">[EXEC] FWA Detection Rate %</div>
+          <div class="ablock-measure">[RAG] FWA Status</div>
+        </div>
+      </div>
+      <div class="ablock exec-block">
+        <div class="ablock-label">HR Tile</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">EXEC — Burnout Prevalence %</div>
+          <div class="ablock-measure">[EXEC] Burnout Prevalence %</div>
+          <div class="ablock-measure">[RAG] Burnout Prevalence Status</div>
+        </div>
+      </div>
+      <div class="ablock exec-block">
+        <div class="ablock-label">Supply Chain Tile</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">EXEC — Stockout Risk Rate %</div>
+          <div class="ablock-measure">[EXEC] Stockout Risk Rate %</div>
+          <div class="ablock-measure">[RAG] Stockout Status</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Radar + Trend -->
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-exec-charts">
+      <div class="ablock chart-radar">
+        <div class="ablock-label">🕸️ Radar — Pillar Performance vs Target</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Composite of all 5 domain KPIs</div>
+          <div class="ablock-measure">RAG — Readmission Rate</div>
+          <div class="ablock-measure">RAG — Burnout Prevalence</div>
+          <div class="ablock-measure">RAG — Bed Occupancy</div>
+          <div class="ablock-measure">RAG — FWA Detection Rate</div>
+          <div class="ablock-measure">RAG — Stockout Risk</div>
+        </div>
+      </div>
+      <div class="ablock chart-line">
+        <div class="ablock-label">📈 Line — Cross-Pillar KPI Trend</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">30-Day Readmission Rate % (indexed)</div>
+          <div class="ablock-measure">Avg Door-to-Doctor Time (indexed)</div>
+          <div class="ablock-measure">FWA Detection Rate % (indexed)</div>
+          <div class="ablock-measure">Burnout Prevalence % (indexed)</div>
+          <div class="ablock-measure">Stockout Risk Rate % (indexed)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scorecard Table -->
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Scorecard Table (full width)</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 Executive Scorecard — Recommended Actions</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">
+        <div class="ablock-measure">[EXEC] 30-Day Readmission Rate % + [RAG] Readmission Status</div>
+        <div class="ablock-measure">[EXEC] Avg Door-to-Doctor Time + [RAG] OR Utilisation Status</div>
+        <div class="ablock-measure">[EXEC] FWA Detection Rate % + [RAG] FWA Status</div>
+        <div class="ablock-measure">[EXEC] Burnout Prevalence % + [RAG] Burnout Prevalence Status</div>
+        <div class="ablock-measure">[EXEC] Stockout Risk Rate % + [RAG] Stockout Status</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Measure Cards -->
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search executive measures…" data-target="exec">
+    <span class="search-count" id="count-exec">20 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-exec"></div>
+</section>
+
+<!-- ============================================================
+     UTILITIES TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-util">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#ECEFF1">🔢</div>
+    <div>
+      <div class="domain-title" style="color:#37474F">Utility Measures</div>
+      <div class="domain-desc">Foundation layer — base counts and financial accumulators. Every rate-based KPI divides its numerator by one of these denominators.</div>
+    </div>
+    <div class="domain-count"><strong>7</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Role:</span>
+    <span class="vbadge denom">⚙️ Denominator in rate measures</span>
+    <span class="vbadge bar">📊 Revenue Funnel Chart</span>
+    <span class="vbadge table">📋 Financial KPI Table</span>
+  </div>
+
+  <!-- Utility Anatomy -->
+  <div class="anatomy-section">
+    <h3>🗺️ Utility Measures — How They Feed Domain Measures</h3>
+    <div class="asub">These measures do NOT appear directly on any visual. They are the invisible denominators and building blocks inside every rate formula.</div>
+
+    <div class="anatomy-util">
+      <div class="ablock util-block">
+        <div class="ablock-label">Encounter Count</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure"># Total Encounters</div>
+          <div class="ablock-measure" style="font-size:.68rem;font-weight:400;opacity:.7">Used by: ALL rate measures (e.g., Readmission %, FWA %)</div>
+        </div>
+      </div>
+      <div class="ablock util-block">
+        <div class="ablock-label">Patient-Days</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure"># Total Patient Days</div>
+          <div class="ablock-measure" style="font-size:.68rem;font-weight:400;opacity:.7">Used by: HAI, Safety Incident per-1k-pt-days measures</div>
+        </div>
+      </div>
+      <div class="ablock util-block">
+        <div class="ablock-label">Patient Count</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure"># Unique Patients</div>
+          <div class="ablock-measure" style="font-size:.68rem;font-weight:400;opacity:.7">Used by: Prevalence calculations, HEDIS rates</div>
+        </div>
+      </div>
+      <div class="ablock util-block">
+        <div class="ablock-label">Nurse Count</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure"># Unique Nurses</div>
+          <div class="ablock-measure" style="font-size:.68rem;font-weight:400;opacity:.7">Used by: Burnout %, Turnover %, Overtime per nurse</div>
+        </div>
+      </div>
+    </div>
+    <div class="anatomy-util">
+      <div class="ablock chart-bar" style="grid-column:span 2">
+        <div class="ablock-label">📊 Revenue Funnel Chart (Financial page)</div>
+        <div class="ablock-measures" style="display:flex;gap:20px">
+          <div class="ablock-measure">$ Total Submitted Charges → Gross billing (top of funnel)</div>
+          <div class="ablock-measure">$ Total Allowed Revenue → Net receivable (contracted)</div>
+        </div>
+      </div>
+      <div class="ablock tbl-block">
+        <div class="ablock-label">📋 Financial KPI Table</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">$ Total Margin Estimate → Operating margin row</div>
+        </div>
+      </div>
+      <div class="ablock util-block" style="background:#E0F7FA;border-color:#80DEEA;color:#006064">
+        <div class="ablock-label">⚙️ Key DAX Pattern</div>
+        <div class="ablock-measure" style="font-size:.71rem">Rate = DIVIDE( COUNTX(…flag=1), [# Total Encounters] )</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search utility measures…" data-target="util">
+    <span class="search-count" id="count-util">7 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-util"></div>
+</section>
+
+<!-- ============================================================
+     CLINICAL TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-clinical">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#E3F2FD">⚕️</div>
+    <div>
+      <div class="domain-title" style="color:#1565C0">Clinical Analytics</div>
+      <div class="domain-desc">Patient outcomes, quality of care, HEDIS compliance, medication adherence, and time-intelligence variants.</div>
+    </div>
+    <div class="domain-count"><strong>12</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Visuals:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge line">📈 Line Chart</span>
+    <span class="vbadge bar">📊 Bar Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+    <span class="vbadge ti">🕐 Time Intelligence</span>
+  </div>
+
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — Clinical Page</h3>
+    <div class="asub">The Clinical tab shows a filter pane + 4 KPI tiles + 2 charts + 1 full-width KPI table.</div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">KPI Hero Tiles (4 tiles)</div>
+    <div class="anatomy-tiles">
+      <div class="ablock tile-block" style="border-color:#A5D6A7">
+        <div class="ablock-label">🟩 Tile 1 — On Target</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">30-Day Readmission Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">⚡ Sparkline: 12-pt trend</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: &lt;15% (CMS HRRP)</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FECACA">
+        <div class="ablock-label">🔴 Tile 2 — Off Target</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">HAI Incidence Rate per 1k Pt-Days</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">⚡ Sparkline; Denom: # Total Patient Days</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: → 0</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 3 — Watch</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Length of Stay (Days)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">⚡ Sparkline; Benchmark: 4.5 days</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 4 — Watch</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">HbA1c Control Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">HEDIS CDC-H; Target: ≥70%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-charts">
+      <div class="ablock chart-line">
+        <div class="ablock-label">📈 Line — 30-Day Readmission Trend (12 months)</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">30-Day Readmission Rate % → Primary line</div>
+          <div class="ablock-measure">30-Day Readmission Rate % YTD → YTD comparison line</div>
+          <div class="ablock-measure">Avg LOS by Discharge Date → Inactive relationship analysis</div>
+        </div>
+      </div>
+      <div class="ablock chart-bar">
+        <div class="ablock-label">📊 Bar — HAI by Pathogen</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">HAI Incidence Rate per 1k Pt-Days (filtered by pathogen)</div>
+          <div class="ablock-measure">Denom: # Total Patient Days</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">KPI Table (all Clinical KPIs)</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 All Clinical KPIs table — 7 rows</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div class="ablock-measure">30-Day Readmission Rate %</div>
+        <div class="ablock-measure">HAI Incidence Rate per 1k Pt-Days</div>
+        <div class="ablock-measure">Avg Length of Stay (Days)</div>
+        <div class="ablock-measure">HbA1c Control Rate %</div>
+        <div class="ablock-measure">Medication Adherence Rate (PDC Avg)</div>
+        <div class="ablock-measure">Post-Discharge Care Continuity %</div>
+        <div class="ablock-measure">Avg Severity Index (Mortality Proxy)</div>
+        <div class="ablock-measure">CAHPS Overall Patient Experience Score</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search clinical measures…" data-target="clinical">
+    <span class="search-count" id="count-clinical">12 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-clinical"></div>
+</section>
+
+<!-- ============================================================
+     OPERATIONAL TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-operational">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#E8F5E9">⚙️</div>
+    <div>
+      <div class="domain-title" style="color:#2E7D32">Operational Analytics</div>
+      <div class="domain-desc">Patient flow, ER throughput, bed management, OR efficiency, and patient safety incident monitoring.</div>
+    </div>
+    <div class="domain-count"><strong>9</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Visuals:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge line">📈 Line Chart</span>
+    <span class="vbadge bar">📊 Bar Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+  </div>
+
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — Operational Page</h3>
+    <div class="asub">4 KPI tiles (ER, Bed, OR, LWBS) + door-to-doctor trend + bed occupancy heat + full KPI table.</div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">KPI Hero Tiles (4 tiles)</div>
+    <div class="anatomy-tiles">
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 1 — Watch</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Door-to-Doctor Time (min)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: &lt;30 min · Also: [EXEC] measure</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 2 — Watch</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Bed Occupancy Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: 75–85% · RAG — Bed Occupancy</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#A5D6A7">
+        <div class="ablock-label">🟩 Tile 3 — On Target</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">OR Utilisation Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: 70–85% · [RAG] OR Utilisation Status</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 4 — Watch</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">LWBS Proxy Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">ACEP target: &lt;2% · Proxy: wait &gt;180 min</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-charts">
+      <div class="ablock chart-line">
+        <div class="ablock-label">📈 Line — ER Door-to-Doctor Trend (12 months)</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Door-to-Doctor Time (min) — monthly</div>
+          <div class="ablock-measure">Avg Bed Wait Time (min) — secondary axis</div>
+        </div>
+      </div>
+      <div class="ablock chart-bar">
+        <div class="ablock-label">📊 Bar — Bed Occupancy + Safety Incidents by Unit</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Bed Occupancy Rate % by unit</div>
+          <div class="ablock-measure">Patient Safety Incident Rate per 1k Pt-Days</div>
+          <div class="ablock-measure">High Occupancy Encounter Rate %</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">KPI Table</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 All Operational KPIs — 9 rows</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+        <div class="ablock-measure">Avg Door-to-Doctor Time (min)</div>
+        <div class="ablock-measure">Bed Occupancy Rate %</div>
+        <div class="ablock-measure">High Occupancy Encounter Rate %</div>
+        <div class="ablock-measure">OR Utilisation Rate %</div>
+        <div class="ablock-measure">Avg OR Turnover Time (min)</div>
+        <div class="ablock-measure">Patient Safety Incident Rate per 1k Pt-Days</div>
+        <div class="ablock-measure">HAC-Eligible Incident Rate %</div>
+        <div class="ablock-measure">Avg Bed Wait Time (min)</div>
+        <div class="ablock-measure">LWBS Proxy Rate %</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search operational measures…" data-target="operational">
+    <span class="search-count" id="count-operational">9 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-operational"></div>
+</section>
+
+<!-- ============================================================
+     FINANCIAL TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-financial">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#FBE9E7">💰</div>
+    <div>
+      <div class="domain-title" style="color:#E65100">Financial &amp; Revenue Cycle</div>
+      <div class="domain-desc">FWA detection, revenue cycle metrics, DRG case mix, operating margin, and time-intelligence variants.</div>
+    </div>
+    <div class="domain-count"><strong>10</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Visuals:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge bar">📊 Funnel Chart</span>
+    <span class="vbadge donut">🍩 Donut Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+    <span class="vbadge ti">🕐 Time Intelligence</span>
+  </div>
+
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — Financial Page</h3>
+    <div class="asub">4 KPI tiles (Net Revenue, Denial Rate, Net Rev/Adm, FWA) + Revenue Cycle Funnel + Denial Reasons Donut + KPI table.</div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">KPI Hero Tiles (4 tiles)</div>
+    <div class="anatomy-tiles">
+      <div class="ablock tile-block" style="border-color:#FECACA">
+        <div class="ablock-label">🔴 Tile 1 — Claim Denial Rate</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">FWA Detection Rate % (overall)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Upcoding + Duplicate + Unbundling combined</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 2 — Days A/R</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">$ Total Allowed Revenue (Utility)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Used in A/R ratio calculation</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#A5D6A7">
+        <div class="ablock-label">🟩 Tile 3 — Net Rev/Adj Adm</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Allowed Revenue per Encounter</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Benchmark: $14,500</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#A5D6A7">
+        <div class="ablock-label">🟩 Tile 4 — FWA Detection</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">FWA Detection Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">FWA Detection Rate % YTD (comparison)</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-charts">
+      <div class="ablock chart-bar">
+        <div class="ablock-label">📊 Horizontal Bar — Revenue Cycle Funnel</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">$ Total Submitted Charges → top of funnel</div>
+          <div class="ablock-measure">$ Total Allowed Revenue → net receivable</div>
+          <div class="ablock-measure">$ Total Margin Estimate → margin row</div>
+          <div class="ablock-measure">Avg Charge Inflation Ratio → audit trigger</div>
+        </div>
+      </div>
+      <div class="ablock chart-donut">
+        <div class="ablock-label">🍩 Donut — Claim Denial Reasons</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Upcoding Rate % → slice (most common)</div>
+          <div class="ablock-measure">Duplicate Claim Rate % → slice</div>
+          <div class="ablock-measure">Unbundling Rate % → slice</div>
+          <div class="ablock-measure">FWA Detection Rate % → outer ring total</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">KPI Table</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 All Financial KPIs — 10 rows</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div class="ablock-measure">Avg Allowed Revenue per Encounter</div>
+        <div class="ablock-measure">FWA Detection Rate %</div>
+        <div class="ablock-measure">Upcoding Rate %</div>
+        <div class="ablock-measure">Duplicate Claim Rate %</div>
+        <div class="ablock-measure">Unbundling Rate %</div>
+        <div class="ablock-measure">Avg Charge Inflation Ratio</div>
+        <div class="ablock-measure">Avg DRG Weight (Case Mix Index)</div>
+        <div class="ablock-measure">Operating Margin Rate %</div>
+        <div class="ablock-measure">Supply Cost per Encounter</div>
+        <div class="ablock-measure">FWA Detection Rate % YTD (compare)</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search financial measures…" data-target="financial">
+    <span class="search-count" id="count-financial">10 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-financial"></div>
+</section>
+
+<!-- ============================================================
+     HR TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-hr">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#F3E5F5">👥</div>
+    <div>
+      <div class="domain-title" style="color:#6A1B9A">HR &amp; Workforce Analytics</div>
+      <div class="domain-desc">Nurse burnout (MBI), turnover risk, overtime, staffing ratios, float rate, and CAHPS workforce scores.</div>
+    </div>
+    <div class="domain-count"><strong>9</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Visuals:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge bar">📊 Horizontal Bar</span>
+    <span class="vbadge line">📈 Line Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+  </div>
+
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — HR Page</h3>
+    <div class="asub">4 KPI tiles (Turnover, Burnout, OT, Vacancy) + Burnout by Unit horizontal bar + Turnover trend line + full KPI table.</div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">KPI Hero Tiles (4 tiles)</div>
+    <div class="anatomy-tiles">
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 1 — Nurse Turnover</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">High Turnover Risk Rate % (Nurse-Level)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Denom: # Unique Nurses · Target: &lt;15%</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FECACA">
+        <div class="ablock-label">🔴 Tile 2 — Burnout Prevalence</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Burnout Prevalence % (Nurse-Level)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">[EXEC] + [RAG] · Denom: # Unique Nurses</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 3 — OT Hours/FTE</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Overtime Hours per Nurse</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">AVERAGEX pattern · Target: &lt;10 hrs/mo</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 4 — Vacancy Rate Proxy</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Float Nurse Encounter Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">% encounters staffed by float/agency</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-charts even">
+      <div class="ablock chart-bar">
+        <div class="ablock-label">📊 Horiz Bar — Burnout by Unit (MBI High Scorers)</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Burnout Prevalence % (Nurse-Level) — by unit</div>
+          <div class="ablock-measure">Avg Burnout Composite Score (MBI) — bar value</div>
+          <div class="ablock-measure">High Burnout Encounter Rate % — secondary measure</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">⚠️ Uses AVERAGEX not SUM/DISTINCTCOUNT</div>
+        </div>
+      </div>
+      <div class="ablock chart-line">
+        <div class="ablock-label">📈 Line — Nurse Turnover Trend (12 months)</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">High Turnover Risk Rate % — all nursing</div>
+          <div class="ablock-measure">High Turnover Risk Rate % — ICU+ED filter</div>
+          <div class="ablock-measure">CAHPS Nurse Communication Score — trend</div>
+          <div class="ablock-measure">CAHPS Responsiveness Score — trend</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">KPI Table</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 All HR KPIs — 9 rows</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+        <div class="ablock-measure">Burnout Prevalence % (Nurse-Level)</div>
+        <div class="ablock-measure">Avg Burnout Composite Score (MBI)</div>
+        <div class="ablock-measure">High Burnout Encounter Rate %</div>
+        <div class="ablock-measure">High Turnover Risk Rate % (Nurse-Level)</div>
+        <div class="ablock-measure">Avg Overtime Hours per Nurse</div>
+        <div class="ablock-measure">Avg Nurse-to-Patient Ratio</div>
+        <div class="ablock-measure">Float Nurse Encounter Rate %</div>
+        <div class="ablock-measure">CAHPS Nurse Communication Score</div>
+        <div class="ablock-measure">CAHPS Responsiveness Score</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search HR measures…" data-target="hr">
+    <span class="search-count" id="count-hr">9 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-hr"></div>
+</section>
+
+<!-- ============================================================
+     SUPPLY CHAIN TAB
+     ============================================================ -->
+<section class="tabpanel" id="panel-supply">
+
+  <div class="domain-header">
+    <div class="domain-icon" style="background:#E0F2F1">📦</div>
+    <div>
+      <div class="domain-title" style="color:#00838F">Supply Chain Analytics</div>
+      <div class="domain-desc">Stockout risk, days of supply, kit lead time, supply cost as % of revenue, reorder point monitoring, and HIMSS EMRAM stage.</div>
+    </div>
+    <div class="domain-count"><strong>7</strong>measures in this folder</div>
+  </div>
+
+  <div class="legend-bar">
+    <span class="legend-title">Visuals:</span>
+    <span class="vbadge tile">🟦 KPI Tile</span>
+    <span class="vbadge line">📈 Line Chart</span>
+    <span class="vbadge bar">📊 Bar Chart</span>
+    <span class="vbadge table">📋 KPI Table</span>
+    <span class="vbadge spark">⚡ Sparkline</span>
+  </div>
+
+  <div class="anatomy-section">
+    <h3>🗺️ Dashboard Anatomy — Supply Chain Page</h3>
+    <div class="asub">4 KPI tiles (Inventory Turns, Stockout, On-Time Delivery, Expired) + Inventory Turnover trend + Stockout by Category bar + KPI table.</div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin-bottom:6px">KPI Hero Tiles (4 tiles)</div>
+    <div class="anatomy-tiles">
+      <div class="ablock tile-block" style="border-color:#A5D6A7">
+        <div class="ablock-label">🟩 Tile 1 — Inventory Turnover</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Days of Supply</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: 10–15x turns · Critical indicator</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FECACA">
+        <div class="ablock-label">🔴 Tile 2 — Stockout Rate</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Stockout Risk Encounter Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">[EXEC] measure · Target: 0%</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 3 — On-Time Delivery</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Kit Lead Time (Days)</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Target: ≥98% · Vendor SLA metric</div>
+        </div>
+      </div>
+      <div class="ablock tile-block" style="border-color:#FED7AA">
+        <div class="ablock-label">🟡 Tile 4 — Below Reorder Point</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Below Reorder Point Rate %</div>
+          <div class="ablock-measure" style="opacity:.65;font-size:.7rem">Avg Kit Reorder Point (Units) — context</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">Charts Row</div>
+    <div class="anatomy-charts even">
+      <div class="ablock chart-line">
+        <div class="ablock-label">📈 Line — Inventory Turnover Trend (12 months)</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Avg Days of Supply — primary line</div>
+          <div class="ablock-measure">Supply Cost as % of Allowed Revenue — secondary</div>
+          <div class="ablock-measure">Target band reference lines</div>
+        </div>
+      </div>
+      <div class="ablock chart-bar">
+        <div class="ablock-label">📊 Bar — Stockouts by Category</div>
+        <div class="ablock-measures">
+          <div class="ablock-measure">Stockout Risk Encounter Rate % — by category</div>
+          <div class="ablock-measure">Below Reorder Point Rate % — by category</div>
+          <div class="ablock-measure">Avg Kit Lead Time (Days) — tooltip context</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-sec);margin:12px 0 6px">KPI Table</div>
+    <div class="ablock tbl-block">
+      <div class="ablock-label">📋 All Supply Chain KPIs — 7 rows</div>
+      <div class="ablock-measures" style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div class="ablock-measure">Stockout Risk Encounter Rate %</div>
+        <div class="ablock-measure">Avg Days of Supply</div>
+        <div class="ablock-measure">Avg Kit Lead Time (Days)</div>
+        <div class="ablock-measure">Supply Cost as % of Allowed Revenue</div>
+        <div class="ablock-measure">Below Reorder Point Rate %</div>
+        <div class="ablock-measure">Avg Kit Reorder Point (Units)</div>
+        <div class="ablock-measure">Avg HIMSS EMRAM Stage</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="search-wrap">
+    <input class="search-input" type="text" placeholder="Search supply chain measures…" data-target="supply">
+    <span class="search-count" id="count-supply">7 measures</span>
+  </div>
+  <div class="cards-grid" id="grid-supply"></div>
+</section>
+
+<!-- ===== FOOTER ===== -->
+<footer class="site-footer">
+  Healthcare Analytics · DAX Measure to Visual Guide · Power BI Model: Healthcare_Analytics on localhost:50927 ·
+  75 measures · 5 business domains · Built for workshop teaching
+</footer>
+
+<!-- ============================================================
+     JAVASCRIPT — DATA + RENDERING
+     ============================================================ -->
+<script>
+// ===== MEASURE DATA =====
+const MEASURES = {
+  exec: [
+    {
+      name:"EXEC — Readmission Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline referencing 30-Day Readmission Rate directly. Wrapper measure to keep the Executive page clean and decoupled from the Clinical folder.",
+      visuals:["exec","rag"], target:"< 15% (CMS HRRP)", deps:["30-Day Readmission Rate %"], cls:"d-exec"
+    },
+    {
+      name:"EXEC — Door-to-Doctor Time (min)", folder:"00 Executive Overview",
+      desc:"Executive headline: Avg ER Door-to-Doctor Time in minutes. References the Operational measure directly.",
+      visuals:["exec","rag"], target:"< 30 min (JCI/CMS)", deps:["Avg Door-to-Doctor Time (min)"], cls:"d-exec"
+    },
+    {
+      name:"EXEC — FWA Detection Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline: FWA Detection Rate. References the Financial measure directly.",
+      visuals:["exec","rag"], target:"< 2% Green / 2–5% Amber / > 5% Red", deps:["FWA Detection Rate %"], cls:"d-exec"
+    },
+    {
+      name:"EXEC — Burnout Prevalence %", folder:"00 Executive Overview",
+      desc:"Executive headline: Nurse-Level Burnout Prevalence. References the HR measure directly.",
+      visuals:["exec","rag"], target:"< 25% alert threshold", deps:["Burnout Prevalence % (Nurse-Level)"], cls:"d-exec"
+    },
+    {
+      name:"EXEC — Stockout Risk Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline: Stockout Risk Rate. References the Supply Chain measure directly.",
+      visuals:["exec","rag"], target:"0% target — any non-zero = Amber/Red", deps:["Stockout Risk Encounter Rate %"], cls:"d-exec"
+    },
+    {
+      name:"[EXEC] 30-Day Readmission Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline version 2 of 30-Day Readmission Rate %. Target < 15% (CMS HRRP). Appears directly on Executive scorecard card.",
+      visuals:["exec","table"], target:"< 15%", deps:["# Total Encounters"], cls:"d-exec"
+    },
+    {
+      name:"[EXEC] Avg Door-to-Doctor Time (min)", folder:"00 Executive Overview",
+      desc:"Executive headline version 2. Avg ER Door-to-Doctor time. Target: < 30 min.",
+      visuals:["exec","table"], target:"< 30 min", deps:["# Total Encounters"], cls:"d-exec"
+    },
+    {
+      name:"[EXEC] FWA Detection Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline version 2. FWA Detection Rate %. Represents claim integrity.",
+      visuals:["exec","table"], target:"< 2%", deps:["# Total Encounters"], cls:"d-exec"
+    },
+    {
+      name:"[EXEC] Burnout Prevalence %", folder:"00 Executive Overview",
+      desc:"Executive headline version 2. Nurse-level burnout prevalence %. Target: < 25% (executive alert threshold).",
+      visuals:["exec","table"], target:"< 25%", deps:["# Unique Nurses"], cls:"d-exec"
+    },
+    {
+      name:"[EXEC] Stockout Risk Rate %", folder:"00 Executive Overview",
+      desc:"Executive headline version 2. % of encounters with a stockout risk flag. Target: 0.",
+      visuals:["exec","table"], target:"0%", deps:["# Total Encounters"], cls:"d-exec"
+    },
+    {
+      name:"RAG — Readmission Rate", folder:"00 Executive Overview_RAG Status",
+      desc:"RAG status for 30-Day Readmission Rate. Returns 'Green', 'Amber', or 'Red' text for conditional formatting in visuals. Thresholds: Green <12%, Amber 12–15%, Red >15%.",
+      visuals:["rag","table"], target:"Green <12% · Amber 12–15% · Red >15%", deps:["30-Day Readmission Rate %"], cls:"d-rag"
+    },
+    {
+      name:"RAG — Burnout Prevalence", folder:"00 Executive Overview_RAG Status",
+      desc:"RAG status for Burnout Prevalence. Returns 'Green', 'Amber', or 'Red'. Thresholds: Green <20%, Amber 20–25%, Red >25%.",
+      visuals:["rag","table"], target:"Green <20% · Amber 20–25% · Red >25%", deps:["Burnout Prevalence % (Nurse-Level)"], cls:"d-rag"
+    },
+    {
+      name:"RAG — Bed Occupancy", folder:"00 Executive Overview_RAG Status",
+      desc:"RAG status for Bed Occupancy Rate. Target zone: 75–85%. Amber if outside range, Red if >90%.",
+      visuals:["rag","table"], target:"Green 75–85% · Amber outside · Red >90%", deps:["Bed Occupancy Rate %"], cls:"d-rag"
+    },
+    {
+      name:"RAG — FWA Detection Rate", folder:"00 Executive Overview_RAG Status",
+      desc:"RAG status for FWA Detection Rate. Thresholds: Green <2%, Amber 2–5%, Red >5%.",
+      visuals:["rag","table"], target:"Green <2% · Amber 2–5% · Red >5%", deps:["FWA Detection Rate %"], cls:"d-rag"
+    },
+    {
+      name:"RAG — Stockout Risk", folder:"00 Executive Overview_RAG Status",
+      desc:"RAG status for Stockout Risk Rate. Any non-zero rate = Amber or Red. Target: 0%.",
+      visuals:["rag","table"], target:"Green = 0% · Amber >0–2% · Red >2%", deps:["Stockout Risk Encounter Rate %"], cls:"d-rag"
+    },
+    {
+      name:"[RAG] Readmission Status", folder:"00 Executive Overview\\RAG Status",
+      desc:"RAG status version 2. Green < 12%, Amber 12–15%, Red > 15%. Used in conditional formatting and scorecard badges.",
+      visuals:["rag","tile"], target:"Green <12% · Amber 12–15% · Red >15%", deps:["30-Day Readmission Rate %"], cls:"d-rag"
+    },
+    {
+      name:"[RAG] Burnout Prevalence Status", folder:"00 Executive Overview\\RAG Status",
+      desc:"RAG status version 2 for Burnout Prevalence. Green < 20%, Amber 20–25%, Red > 25%.",
+      visuals:["rag","tile"], target:"Green <20% · Amber 20–25% · Red >25%", deps:["Burnout Prevalence % (Nurse-Level)"], cls:"d-rag"
+    },
+    {
+      name:"[RAG] OR Utilisation Status", folder:"00 Executive Overview\\RAG Status",
+      desc:"RAG status for OR Utilisation Rate. Green 70–85%, Amber 85–90%, Red >90% or <65%.",
+      visuals:["rag","tile"], target:"Green 70–85% · Amber 85–90% · Red >90%", deps:["OR Utilisation Rate %"], cls:"d-rag"
+    },
+    {
+      name:"[RAG] FWA Status", folder:"00 Executive Overview\\RAG Status",
+      desc:"RAG status version 2 for FWA Detection Rate. Green < 2%, Amber 2–5%, Red > 5%.",
+      visuals:["rag","tile"], target:"Green <2% · Amber 2–5% · Red >5%", deps:["FWA Detection Rate %"], cls:"d-rag"
+    },
+    {
+      name:"[RAG] Stockout Status", folder:"00 Executive Overview\\RAG Status",
+      desc:"RAG status version 2 for Stockout Risk Rate. Green = 0%, Amber >0–2%, Red >2%.",
+      visuals:["rag","tile"], target:"Green = 0% · Amber >0–2% · Red >2%", deps:["Stockout Risk Encounter Rate %"], cls:"d-rag"
+    },
+  ],
+
+  util: [
+    {
+      name:"# Total Encounters", folder:"_Utilities",
+      desc:"Base count of all encounters in the current filter context. The universal denominator for ALL rate-based KPIs across every dashboard page. If a measure calculates a %, divide by this.",
+      visuals:["denom"], target:"N/A — denominator only", deps:[], cls:"d-utility"
+    },
+    {
+      name:"# Total Patient Days", folder:"_Utilities",
+      desc:"Sum of Length of Stay (LOS) across all encounters. Denominator for per-1,000-patient-days incidence rates such as HAI and Safety Incidents.",
+      visuals:["denom"], target:"N/A — denominator only", deps:[], cls:"d-utility"
+    },
+    {
+      name:"# Unique Patients", folder:"_Utilities",
+      desc:"Count of distinct patients with at least one encounter in context. Denominator for patient-level prevalence calculations (HEDIS rates, disease prevalence).",
+      visuals:["denom"], target:"N/A — denominator only", deps:[], cls:"d-utility"
+    },
+    {
+      name:"# Unique Nurses", folder:"_Utilities",
+      desc:"Count of distinct nurses appearing in at least one encounter in context. Denominator for per-nurse HR metrics (burnout prevalence %, turnover risk %, overtime per nurse).",
+      visuals:["denom"], target:"N/A — denominator only", deps:[], cls:"d-utility"
+    },
+    {
+      name:"$ Total Submitted Charges", folder:"_Utilities",
+      desc:"Sum of all payer-billed charges before contractual adjustments. Represents gross billing potential — the top of the Revenue Cycle Funnel chart.",
+      visuals:["bar","table"], target:"N/A — gross billing accumulator", deps:[], cls:"d-utility"
+    },
+    {
+      name:"$ Total Allowed Revenue", folder:"_Utilities",
+      desc:"Sum of payer-contracted allowed amounts — the net receivable after contractual adjustments. Primary revenue line for financial reporting and the basis for margin calculations.",
+      visuals:["bar","table"], target:"N/A — net revenue accumulator", deps:[], cls:"d-utility"
+    },
+    {
+      name:"$ Total Margin Estimate", folder:"_Utilities",
+      desc:"Sum of estimated operating margins across all encounters. Computed in the gold layer as Allowed Amount minus overhead costs. Used in the financial KPI table.",
+      visuals:["table"], target:"N/A — margin accumulator", deps:["$ Total Allowed Revenue"], cls:"d-utility"
+    },
+  ],
+
+  clinical: [
+    {
+      name:"30-Day Readmission Rate %", folder:"01 Clinical",
+      desc:"% of encounters followed by readmission within 30 days. Industry benchmark: < 15% (CMS HRRP target). Core quality metric used in CMS Value-Based Purchasing.",
+      visuals:["tile","line","table","spark","exec"], target:"< 15% (CMS HRRP) · < 12% = Green RAG", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"HAI Incidence Rate per 1k Pt-Days", folder:"01 Clinical",
+      desc:"Hospital-acquired infections per 1,000 patient days, restricted to HAC-eligible incidents. Minimise toward 0. Elevated rates correlate with ICU nurse-to-patient ratio slippage.",
+      visuals:["tile","bar","table","spark"], target:"→ 0 (HAC-eligible events)", deps:["# Total Patient Days"], cls:"d-clinical"
+    },
+    {
+      name:"Avg Length of Stay (Days)", folder:"01 Clinical",
+      desc:"Average inpatient days per encounter. Benchmark: 4.5 days (facility target). Extended LOS typically signals infection complications or discharge planning failures.",
+      visuals:["tile","table","spark"], target:"4.5 days benchmark", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"HbA1c Control Rate %", folder:"01 Clinical",
+      desc:"% of HEDIS-tested diabetic patients with good glycaemic control (HbA1c not in poor-control range). Target: ≥ 70% (HEDIS CDC-H measure).",
+      visuals:["tile","table","spark"], target:"≥ 70% (HEDIS CDC-H)", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"HEDIS HbA1c Tested Rate %", folder:"01 Clinical",
+      desc:"% of diabetic encounters where HbA1c was tested during the period. HEDIS care gap indicator — must be tested before HbA1c Control Rate % is meaningful.",
+      visuals:["table"], target:"≥ 90% HEDIS testing rate", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"Medication Adherence Rate (PDC Avg)", folder:"01 Clinical",
+      desc:"Average Proportion of Days Covered (PDC) across all encounters. PDC ≥ 0.80 = adherent. A continuous 0–1 score averaging individual adherence ratios.",
+      visuals:["table"], target:"Avg PDC ≥ 80%", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"Medication Adherence Population %", folder:"01 Clinical",
+      desc:"% of encounters where PDC ≥ 0.80 (medication_adherent_flag = 1). Binary population-level view of adherence — the 'on/off' version of PDC Avg.",
+      visuals:["table"], target:"≥ 80% of population adherent", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"Post-Discharge Care Continuity %", folder:"01 Clinical",
+      desc:"Proxy for post-discharge care continuity: % of encounters where the patient was adherent to medications AND did not readmit within 30 days. Combined care quality indicator.",
+      visuals:["table"], target:"≥ 85%", deps:["# Total Encounters","30-Day Readmission Rate %"], cls:"d-clinical"
+    },
+    {
+      name:"Avg Severity Index (Mortality Proxy)", folder:"01 Clinical",
+      desc:"Average patient severity index (normalised around 1.0). Values < 1.0 indicate below-expected mortality risk. Aligned with AHRQ PSI methodology.",
+      visuals:["table"], target:"< 1.0 (below expected mortality risk)", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"CAHPS Overall Patient Experience Score", folder:"01 Clinical",
+      desc:"Average of all 8 CAHPS survey dimensions (0–10 scale). Reflects composite patient experience quality. Affects CMS Value-Based Purchasing reimbursement adjustment.",
+      visuals:["table"], target:"Higher is better (0–10 scale)", deps:["# Total Encounters"], cls:"d-clinical"
+    },
+    {
+      name:"30-Day Readmission Rate % YTD", folder:"01 Clinical\\Time Intelligence",
+      desc:"YTD 30-Day Readmission Rate using triage date. Uses TOTALYTD() DAX function. Requires dimDate to be formally marked as a Date Table.",
+      visuals:["ti","line"], target:"Same as domain measure — YTD accumulation", deps:["30-Day Readmission Rate %","# Total Encounters"], cls:"d-ti"
+    },
+    {
+      name:"Avg LOS YTD", folder:"01 Clinical\\Time Intelligence",
+      desc:"YTD Average LOS using triage date. TOTALYTD() pattern. Requires dimDate marked as Date Table. Enables cumulative YTD benchmarking against annual targets.",
+      visuals:["ti","line"], target:"Same as domain measure — YTD accumulation", deps:["Avg Length of Stay (Days)"], cls:"d-ti"
+    },
+    {
+      name:"Avg LOS by Discharge Date", folder:"01 Clinical\\Time Intelligence",
+      desc:"Avg LOS analysed by discharge date using USERELATIONSHIP() on the inactive relationship to dimDate via discharge_date_key. Enables discharge-cohort analysis — different from triage-date view.",
+      visuals:["ti","line"], target:"Same benchmark 4.5 days — cohort view", deps:["Avg Length of Stay (Days)","# Total Encounters"], cls:"d-ti"
+    },
+  ],
+
+  operational: [
+    {
+      name:"Avg Door-to-Doctor Time (min)", folder:"02 Operational",
+      desc:"Average ER door-to-physician time in minutes. Measured from triage_timestamp to first physician contact. Target: < 30 min (JCI/CMS benchmark).",
+      visuals:["tile","line","table","spark","exec"], target:"< 30 min", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"Bed Occupancy Rate %", folder:"02 Operational",
+      desc:"Average bed occupancy % across encounters. Optimal range: 75–85%. Above 85% strains nurse-to-patient ratios and creates LWBS risk.",
+      visuals:["tile","bar","table","spark","rag"], target:"75–85% optimal range", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"High Occupancy Encounter Rate %", folder:"02 Operational",
+      desc:"% of encounters flagged as high-occupancy events. Identifies surge periods straining staffing and safety. Used in unit-level bar charts.",
+      visuals:["bar","table"], target:"Minimise — any persistent high rate = surge", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"OR Utilisation Rate %", folder:"02 Operational",
+      desc:"Average OR efficiency ratio (actual / expected OR minutes). Target: 70–85% utilisation band (AORN benchmark). Below 70% = underuse; above 85% = overuse / cancellation risk.",
+      visuals:["tile","table","spark","rag"], target:"70–85% AORN benchmark", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"Avg OR Turnover Time (min)", folder:"02 Operational",
+      desc:"Average time between surgical cases in the same OR suite. Target: < 25 min. Prolonged turnover reduces throughput and OR utilisation.",
+      visuals:["table"], target:"< 25 min", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"Patient Safety Incident Rate per 1k Pt-Days", folder:"02 Operational",
+      desc:"All patient safety incidents per 1,000 patient days. Includes all incident types. Target: minimise toward 0. Cross-domain correlate of nurse staffing ratios.",
+      visuals:["bar","table"], target:"→ 0 (minimise)", deps:["# Total Patient Days"], cls:"d-operational"
+    },
+    {
+      name:"HAC-Eligible Incident Rate %", folder:"02 Operational",
+      desc:"% of encounters with a CMS-defined Hospital-Acquired Condition (HAC) incident. HACRP penalty threshold: bottom 25% of hospitals face payment reductions.",
+      visuals:["table"], target:"Minimise — HACRP penalty risk at bottom 25%", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"Avg Bed Wait Time (min)", folder:"02 Operational",
+      desc:"Average time waiting for a bed after admission decision. Proxy for inpatient boarding and flow bottleneck. Directly drives LWBS Proxy Rate %.",
+      visuals:["line","table"], target:"Minimise — direct LWBS driver", deps:["# Total Encounters"], cls:"d-operational"
+    },
+    {
+      name:"LWBS Proxy Rate %", folder:"02 Operational",
+      desc:"Proxy for Left-Without-Being-Seen (LWBS) rate: % of encounters with bed wait > 180 min. ACEP target: < 2%. High LWBS signals capacity failure.",
+      visuals:["tile","table","spark"], target:"< 2% (ACEP target)", deps:["# Total Encounters","Avg Bed Wait Time (min)"], cls:"d-operational"
+    },
+  ],
+
+  financial: [
+    {
+      name:"Avg Allowed Revenue per Encounter", folder:"03 Financial & Revenue Cycle",
+      desc:"Average payer-contracted allowed amount per encounter — the net revenue unit. Equivalent to 'Net Revenue per Adjusted Admission'. Benchmark: $14,500.",
+      visuals:["tile","table","spark"], target:"≥ $14,500 benchmark", deps:["$ Total Allowed Revenue","# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"FWA Detection Rate %", folder:"03 Financial & Revenue Cycle",
+      desc:"FWA Detection Rate: % of encounters with at least one fraud, waste, or abuse indicator (upcoding, duplicate claim, or unbundling). Umbrella measure covering all three FWA types.",
+      visuals:["tile","donut","table","spark","exec","rag"], target:"< 2% Green · 2–5% Amber · > 5% Red", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"Upcoding Rate %", folder:"03 Financial & Revenue Cycle",
+      desc:"% of encounters flagged for upcoding (billing a more complex procedure than performed). Most common FWA type by financial value. Auditors focus on DRG upcoding.",
+      visuals:["donut","table"], target:"0% target — any rate = audit risk", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"Duplicate Claim Rate %", folder:"03 Financial & Revenue Cycle",
+      desc:"% of encounters flagged for duplicate claim submission (same service billed twice). Detectable via claim ID comparison and identical service date/CPT combinations.",
+      visuals:["donut","table"], target:"0% target", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"Unbundling Rate %", folder:"03 Financial & Revenue Cycle",
+      desc:"% of encounters flagged for unbundling (billing separately for services that should be bundled under one CPT code). Common in surgical and laboratory billing.",
+      visuals:["donut","table"], target:"0% target", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"Avg Charge Inflation Ratio", folder:"03 Financial & Revenue Cycle",
+      desc:"Average ratio of submitted charge to expected reimbursement. Values consistently > 1.5 trigger FWA audit flags. Normal range: 1.0–1.3 for most payer contracts.",
+      visuals:["bar","table"], target:"1.0–1.3 normal · > 1.5 = audit flag", deps:["$ Total Submitted Charges","$ Total Allowed Revenue"], cls:"d-financial"
+    },
+    {
+      name:"Avg DRG Weight (Case Mix Index)", folder:"03 Financial & Revenue Cycle",
+      desc:"Average DRG weight (Case Mix Index). Values > 1.0 indicate more complex patients than national average. Higher CMI justifies higher reimbursement under Medicare DRG payments.",
+      visuals:["table"], target:"> 1.0 = above-average complexity", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"Operating Margin Rate %", folder:"03 Financial & Revenue Cycle",
+      desc:"Operating margin as % of allowed revenue. Positive = profitable. Drill by payer and service line to identify margin-eroding contracts.",
+      visuals:["table"], target:"Positive margin; varies by payer mix", deps:["$ Total Allowed Revenue","$ Total Margin Estimate"], cls:"d-financial"
+    },
+    {
+      name:"Supply Cost per Encounter", folder:"03 Financial & Revenue Cycle",
+      desc:"Average surgical kit cost per encounter. Sourced from dimSurgicalKit via RELATED. Represents direct supply cost unit. Used for cost-per-case analysis.",
+      visuals:["table"], target:"Monitor vs revenue mix", deps:["# Total Encounters"], cls:"d-financial"
+    },
+    {
+      name:"FWA Detection Rate % YTD", folder:"03 Financial & Revenue Cycle\\Time Intelligence",
+      desc:"YTD FWA Detection Rate using triage date. TOTALYTD() pattern. Tracks cumulative billing integrity across the year. Requires dimDate marked as Date Table.",
+      visuals:["ti","table"], target:"Same threshold as domain measure — YTD view", deps:["FWA Detection Rate %","# Total Encounters"], cls:"d-ti"
+    },
+  ],
+
+  hr: [
+    {
+      name:"Burnout Prevalence % (Nurse-Level)", folder:"04 HR & Workforce",
+      desc:"% of distinct nurses in context classified with high MBI burnout (High or Very High tier). Dashboard headline KPI. Uses AVERAGEX over nurses, not over encounters — prevents inflated results. Target: < 25%.",
+      visuals:["tile","bar","table","spark","exec","rag"], target:"< 25% (< 20% = Green RAG)", deps:["# Unique Nurses"], cls:"d-hr"
+    },
+    {
+      name:"Avg Burnout Composite Score (MBI)", folder:"04 HR & Workforce",
+      desc:"Average MBI burnout composite score across all encounters. Formula: (EE + DP + (6 – PA)) / 3. Higher = higher burnout severity. All three subscales (EE, DP, PA) must be present.",
+      visuals:["bar","table"], target:"Lower is better — monitor trends over time", deps:["# Total Encounters"], cls:"d-hr"
+    },
+    {
+      name:"High Burnout Encounter Rate %", folder:"04 HR & Workforce",
+      desc:"% of encounters where the assigned nurse had a high burnout tier. Encounter-level burnout exposure rate. Complements the nurse-level Burnout Prevalence % measure.",
+      visuals:["table"], target:"Should track with Burnout Prevalence %", deps:["# Total Encounters"], cls:"d-hr"
+    },
+    {
+      name:"High Turnover Risk Rate % (Nurse-Level)", folder:"04 HR & Workforce",
+      desc:"% of distinct nurses flagged as high turnover risk. Calculated at nurse level (AVERAGEX). Target: < 15%. Cost per replaced nurse: ~$40k–$60k replacement cost.",
+      visuals:["tile","line","table","spark"], target:"< 15%", deps:["# Unique Nurses"], cls:"d-hr"
+    },
+    {
+      name:"Avg Overtime Hours per Nurse", folder:"04 HR & Workforce",
+      desc:"Average overtime hours per nurse, calculated as the per-nurse average of per-encounter shift overtime. Uses AVERAGEX pattern — more meaningful than SUM/DISTINCTCOUNT for the '< 10 hrs/month' target.",
+      visuals:["tile","table","spark"], target:"< 10 hrs/month", deps:["# Unique Nurses"], cls:"d-hr"
+    },
+    {
+      name:"Avg Nurse-to-Patient Ratio", folder:"04 HR & Workforce",
+      desc:"Average patients per nurse across all encounters. Target: ≤ 5:1 general ward; ≤ 2:1 ICU. Directly correlates with CAHPS responsiveness score and HAI incidence rate.",
+      visuals:["table"], target:"≤ 5:1 general · ≤ 2:1 ICU", deps:["# Total Encounters","# Unique Nurses"], cls:"d-hr"
+    },
+    {
+      name:"Float Nurse Encounter Rate %", folder:"04 HR & Workforce",
+      desc:"% of encounters staffed by a float/agency nurse. Proxy for vacancy rate and staffing gap. High float rates increase safety risk and reduce care continuity.",
+      visuals:["tile","table","spark"], target:"< 10% — high rates signal staffing gaps", deps:["# Total Encounters"], cls:"d-hr"
+    },
+    {
+      name:"CAHPS Nurse Communication Score", folder:"04 HR & Workforce",
+      desc:"Average CAHPS nurse communication score (0–10 scale). Strong predictor of CMS Value-Based Purchasing reimbursement adjustment. Inversely correlated with nurse-to-patient ratio.",
+      visuals:["line","table"], target:"Higher is better (0–10) · VBP impact", deps:["# Total Encounters"], cls:"d-hr"
+    },
+    {
+      name:"CAHPS Responsiveness Score", folder:"04 HR & Workforce",
+      desc:"Average CAHPS responsiveness score (0–10). Directly influenced by nurse-to-patient ratios. When ratios slip (e.g., ICU >2:1), responsiveness scores fall predictably.",
+      visuals:["line","table"], target:"Higher is better (0–10) · Ratio-dependent", deps:["# Total Encounters","Avg Nurse-to-Patient Ratio"], cls:"d-hr"
+    },
+  ],
+
+  supply: [
+    {
+      name:"Stockout Risk Encounter Rate %", folder:"05 Supply Chain",
+      desc:"% of encounters where a kit stockout risk was flagged. Target: 0%. Any non-zero rate warrants immediate supply chain investigation. Executive headline KPI.",
+      visuals:["tile","bar","table","spark","exec","rag"], target:"0% — any non-zero = investigate", deps:["# Total Encounters"], cls:"d-supply"
+    },
+    {
+      name:"Avg Days of Supply", folder:"05 Supply Chain",
+      desc:"Average days of surgical kit supply remaining at encounter time. Values near or below the reorder point signal replenishment urgency. Central inventory health indicator.",
+      visuals:["tile","line","table"], target:"Above reorder point · Monitor trends", deps:["# Total Encounters"], cls:"d-supply"
+    },
+    {
+      name:"Avg Kit Lead Time (Days)", folder:"05 Supply Chain",
+      desc:"Average supplier lead time for kits used in encounters. Sourced from dimSurgicalKit via RELATED. Longer lead time requires higher safety stock to prevent stockouts.",
+      visuals:["tile","bar","table"], target:"Shorter is better — drives safety stock sizing", deps:["# Total Encounters"], cls:"d-supply"
+    },
+    {
+      name:"Supply Cost as % of Allowed Revenue", folder:"05 Supply Chain",
+      desc:"Surgical kit supply cost as % of total allowed revenue. Target: 20–25% of net revenue for surgical departments. Above 30% signals procurement efficiency issues.",
+      visuals:["line","table"], target:"20–25% of net revenue for surgical", deps:["$ Total Allowed Revenue","# Total Encounters"], cls:"d-supply"
+    },
+    {
+      name:"Below Reorder Point Rate %", folder:"05 Supply Chain",
+      desc:"% of encounters where kit days of supply was at or below the kit's reorder point — indicating critical inventory at time of procedure. Precursor to stockout.",
+      visuals:["bar","table"], target:"0% target — leading indicator of stockout", deps:["# Total Encounters","Avg Kit Reorder Point (Units)"], cls:"d-supply"
+    },
+    {
+      name:"Avg Kit Reorder Point (Units)", folder:"05 Supply Chain",
+      desc:"Average reorder point (in units) across all kits used in encounters. Indicates the stock level at which replenishment should be triggered. Context for Below Reorder Point Rate %.",
+      visuals:["table"], target:"Context measure — varies by kit SKU", deps:[], cls:"d-supply"
+    },
+    {
+      name:"Avg HIMSS EMRAM Stage", folder:"05 Supply Chain",
+      desc:"Average HIMSS EMRAM stage across encounters. Stage 7 = fully digital, analytics-ready. Minimum Stage 6 required for HIMSS accreditation. Tracks digital maturity over time.",
+      visuals:["table"], target:"Stage 6 minimum (HIMSS) · Stage 7 = Gold", deps:["# Total Encounters"], cls:"d-supply"
+    },
+  ],
+};
+
+// ===== VISUAL BADGE CONFIG =====
+const BADGE_CONFIG = {
+  tile:  { label:"🟦 KPI Tile",  cls:"tile"  },
+  line:  { label:"📈 Line Chart",cls:"line"  },
+  bar:   { label:"📊 Bar Chart", cls:"bar"   },
+  donut: { label:"🍩 Donut Chart",cls:"donut"},
+  radar: { label:"🕸️ Radar Chart",cls:"radar"},
+  table: { label:"📋 KPI Table", cls:"table" },
+  spark: { label:"⚡ Sparkline",  cls:"spark" },
+  rag:   { label:"🚦 RAG Status", cls:"rag"  },
+  exec:  { label:"🎯 Exec Tile", cls:"exec"  },
+  denom: { label:"⚙️ Denominator",cls:"denom"},
+  ti:    { label:"🕐 Time Intelligence",cls:"ti"},
+};
+
+// ===== CARD RENDERER =====
+function renderCard(m) {
+  const badges = m.visuals.map(v => {
+    const b = BADGE_CONFIG[v];
+    return `<span class="vbadge ${b.cls}">${b.label}</span>`;
+  }).join('');
+
+  const deps = m.deps.length
+    ? `<div class="mcard-deps">🔗 Depends on: ${m.deps.map(d=>`<span class="dep-tag">${d}</span>`).join('')}</div>`
+    : '';
+
+  return `
+    <div class="mcard ${m.cls}" data-search="${(m.name+' '+m.desc+' '+m.folder).toLowerCase()}">
+      <div class="mcard-folder">${m.folder}</div>
+      <div class="mcard-name">${m.name}</div>
+      <div class="mcard-badges">${badges}</div>
+      <div class="mcard-desc">${m.desc}</div>
+      <div class="mcard-target"><strong>🎯 Target:</strong> ${m.target}</div>
+      ${deps}
+    </div>`;
+}
+
+// ===== POPULATE GRIDS =====
+function populateGrid(gridId, measures) {
+  const el = document.getElementById(gridId);
+  if (!el) return;
+  el.innerHTML = measures.map(renderCard).join('');
+}
+
+populateGrid('grid-exec',       MEASURES.exec);
+populateGrid('grid-util',       MEASURES.util);
+populateGrid('grid-clinical',   MEASURES.clinical);
+populateGrid('grid-operational',MEASURES.operational);
+populateGrid('grid-financial',  MEASURES.financial);
+populateGrid('grid-hr',         MEASURES.hr);
+populateGrid('grid-supply',     MEASURES.supply);
+
+// ===== SEARCH FILTER =====
+document.querySelectorAll('.search-input').forEach(input => {
+  const target = input.dataset.target;
+  const countEl = document.getElementById('count-' + target);
+  const grid = document.getElementById('grid-' + target);
+
+  input.addEventListener('input', () => {
+    const q = input.value.toLowerCase().trim();
+    const cards = grid.querySelectorAll('.mcard');
+    let visible = 0;
+    cards.forEach(c => {
+      const match = !q || c.dataset.search.includes(q);
+      c.classList.toggle('hidden', !match);
+      if (match) visible++;
+    });
+    const total = MEASURES[target]?.length || cards.length;
+    countEl.textContent = q ? `${visible} of ${total} measures` : `${total} measures`;
+  });
+});
+
+// ===== TAB SWITCHING =====
+function switchTab(tabId) {
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+  const btn = document.querySelector(`.tabbtn[data-tab="${tabId}"]`);
+  const panel = document.getElementById(`panel-${tabId}`);
+  if (btn) btn.classList.add('active');
+  if (panel) { panel.classList.add('active'); panel.scrollIntoView({ behavior:'smooth', block:'start' }); }
+}
+
+document.querySelectorAll('.tabbtn').forEach(btn => {
+  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+});
+
+// Card click — show intro card detail
+document.querySelectorAll('.intro-card').forEach(c => {
+  c.style.cursor = 'pointer';
+});
+</script>
+</body>
+</html>

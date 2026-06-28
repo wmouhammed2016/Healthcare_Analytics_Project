@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "767e9a5e9e44f578492b",
+  "position": {
+    "x": 917.037037037037,
+    "y": 81.481481481481481,
+    "z": 2,
+    "height": 300.7407407407407,
+    "width": 299.25925925925924
+  },
+  "visual": {
+    "visualType": "card",
+    "autoSelectVisualType": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "Avg Severity Index (Mortality Proxy)"
+                }
+              },
+              "queryRef": "_Measures.Avg Severity Index (Mortality Proxy)",
+              "nativeQueryRef": "Avg Severity Index (Mortality Proxy)"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}

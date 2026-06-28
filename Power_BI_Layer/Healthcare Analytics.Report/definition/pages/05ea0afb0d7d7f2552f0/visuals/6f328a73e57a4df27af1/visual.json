@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.7.0/schema.json",
+  "name": "6f328a73e57a4df27af1",
+  "position": {
+    "x": 917.037037037037,
+    "y": 382.59259259259261,
+    "z": 4,
+    "height": 300,
+    "width": 299.25925925925912
+  },
+  "visual": {
+    "visualType": "card",
+    "autoSelectVisualType": true,
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "_Measures"
+                    }
+                  },
+                  "Property": "HAI Incidence Rate per 1k Pt-Days"
+                }
+              },
+              "queryRef": "_Measures.HAI Incidence Rate per 1k Pt-Days",
+              "nativeQueryRef": "HAI Incidence Rate per 1k Pt-Days"
+            }
+          ]
+        }
+      }
+    },
+    "drillFilterOtherVisuals": true
+  }
+}
