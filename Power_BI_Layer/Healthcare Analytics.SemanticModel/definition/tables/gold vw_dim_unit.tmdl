@@ -1,0 +1,52 @@
+table 'gold vw_dim_unit'
+	lineageTag: 8a4e7587-07d4-496b-810d-3a3c55732762
+
+	column unit_assigned
+		dataType: string
+		lineageTag: 50265013-aa3c-4b9c-9059-7b72fe82fe0c
+		summarizeBy: none
+		sourceColumn: unit_assigned
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_tier
+		dataType: string
+		lineageTag: 2850cd5a-2d85-4a72-848d-dca53289204b
+		summarizeBy: none
+		sourceColumn: unit_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column target_nurse_ratio
+		dataType: int64
+		formatString: 0
+		lineageTag: 9e02670f-4282-412e-b933-97ecfe496be0
+		summarizeBy: none
+		sourceColumn: target_nurse_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_sk
+		dataType: int64
+		isKey
+		formatString: 0
+		lineageTag: d137d06d-af3f-41dc-84ff-bc337c6b5677
+		summarizeBy: none
+		sourceColumn: unit_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_unit' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_unit = HCWarehouse_N2{[Schema="gold",Item="vw_dim_unit"]}[Data]
+				in
+				    gold_vw_dim_unit
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

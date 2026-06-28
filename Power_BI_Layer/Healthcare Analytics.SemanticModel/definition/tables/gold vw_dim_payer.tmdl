@@ -1,0 +1,53 @@
+table 'gold vw_dim_payer'
+	lineageTag: 4040175d-705a-4f05-ba10-1988d7c458a7
+
+	column payer
+		dataType: string
+		lineageTag: ed8bfa30-4f67-4a80-916c-d68547fffdaf
+		summarizeBy: none
+		sourceColumn: payer
+
+		annotation SummarizationSetBy = Automatic
+
+	column payer_tier
+		dataType: string
+		lineageTag: 0d36aaab-98ee-4491-afca-8b27f2731b6c
+		summarizeBy: none
+		sourceColumn: payer_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column contractual_discount_rate
+		dataType: double
+		lineageTag: d8413a88-a6b6-489a-9939-f6928b0f95dd
+		summarizeBy: none
+		sourceColumn: contractual_discount_rate
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column payer_sk
+		dataType: int64
+		isKey
+		formatString: 0
+		lineageTag: 372419ab-0132-48b8-88de-59d9f4fbe246
+		summarizeBy: none
+		sourceColumn: payer_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_payer' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_payer = HCWarehouse_N2{[Schema="gold",Item="vw_dim_payer"]}[Data]
+				in
+				    gold_vw_dim_payer
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

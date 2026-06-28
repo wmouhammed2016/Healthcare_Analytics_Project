@@ -1,0 +1,8 @@
+# Healthcare ETL Data Loader — Python Dependencies
+# Install: pip install -r requirements.txt
+# Requires Python 3.11+
+
+pyodbc>=5.1.0          # SQL Server ODBC driver interface
+pandas>=3.0.0          # Chunked CSV reading (PyArrow backend)
+pyarrow>=16.0.0        # PyArrow backend for Pandas 3.0
+tqdm>=4.66.0           # Progress bar (optional — used in stagingLoader)

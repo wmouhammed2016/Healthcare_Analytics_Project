@@ -1,0 +1,31 @@
+# Ignoring the Pthon virtual env folders
+.venv
+
+# Ignore trash files
+Trash
+
+# Ignore the data files and share onle the data generation script
+100Records_SDG/*
+1MRecords_SDG/*
+!2Parquet.py
+!PROCEDURE_1M_GENERATION.md
+!sdg_engine_1m.py
+!sdg_generation.ipynb
+
+# Ignore python cache folders
+Codebase/__pycache__/
+
+# Ignore config files
+# Codebase/config.ini
+
+# Ignore amendments
+Amendments/*
+
+# Notes
+Agenda.txt
+Data_Model_Notes.txt
+
+# Ignore Power BI cache files
+**.abf
+
+

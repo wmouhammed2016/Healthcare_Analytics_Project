@@ -1,0 +1,42 @@
+table 'gold vw_dim_diagnosis'
+	lineageTag: 4a61206a-1a09-47e4-ad7d-bac5d53e585b
+
+	column icd10_code
+		dataType: string
+		isKey
+		lineageTag: 993e3426-3390-4f49-a47d-256e63d19810
+		summarizeBy: none
+		sourceColumn: icd10_code
+
+		annotation SummarizationSetBy = Automatic
+
+	column diagnosis_display
+		dataType: string
+		lineageTag: 93d37d32-517f-438b-bcb7-58051d31428d
+		summarizeBy: none
+		sourceColumn: diagnosis_display
+
+		annotation SummarizationSetBy = Automatic
+
+	column diagnosis_category
+		dataType: string
+		lineageTag: 49551dd4-dc4f-4112-b5a5-9e6b3c20c456
+		summarizeBy: none
+		sourceColumn: diagnosis_category
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_diagnosis' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_diagnosis = HCWarehouse_N2{[Schema="gold",Item="vw_dim_diagnosis"]}[Data]
+				in
+				    gold_vw_dim_diagnosis
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

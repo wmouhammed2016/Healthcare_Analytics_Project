@@ -1,0 +1,45 @@
+relationship c17efaa8-2a72-c731-c0b7-22b16ff2e6a2
+	fromColumn: 'gold vw_fact_encounter'.triage_date_sk
+	toColumn: 'gold vw_dim_encounter_date'.date_sk
+
+relationship 07dbbd51-6688-d432-9254-b50c075105fe
+	isActive: false
+	fromColumn: 'gold vw_fact_encounter'.discharge_date_sk
+	toColumn: 'gold vw_dim_encounter_date'.date_sk
+
+relationship 9ed4f5bb-4222-ba1a-aece-e09c0b55ac41
+	fromColumn: 'gold vw_fact_encounter'.surgeon_emp_id
+	toColumn: 'gold vw_dim_surgeon'.surgeon_emp_id
+
+relationship 563b2758-ddfc-6f8c-d29b-a6f8b84a1dfc
+	fromColumn: 'gold vw_fact_encounter'.patient_id
+	toColumn: 'gold vw_dim_patient'.patient_id
+
+relationship 32e5442a-970d-cc71-a8eb-c4c6300bdfcf
+	fromColumn: 'gold vw_fact_encounter'.incident_sk
+	toColumn: 'gold vw_dim_safety_incident'.incident_sk
+
+relationship 06fab1a7-49ab-5d2c-2266-cdaf5119d92a
+	fromColumn: 'gold vw_fact_encounter'.nurse_emp_id
+	toColumn: 'gold vw_dim_nurse'.nurse_emp_id
+
+relationship 596c62e3-d9a3-e943-8b43-7551073fd39f
+	fromColumn: 'gold vw_fact_encounter'.payer_sk
+	toColumn: 'gold vw_dim_payer'.payer_sk
+
+relationship 5d28a859-3648-3856-696e-fc21abb70dcc
+	fromColumn: 'gold vw_fact_encounter'.cpt_code
+	toColumn: 'gold vw_dim_procedure'.cpt_code
+
+relationship 49fd23f2-3454-322f-4165-acebe78b5a01
+	fromColumn: 'gold vw_fact_encounter'.unit_sk
+	toColumn: 'gold vw_dim_unit'.unit_sk
+
+relationship 86f7a9e9-7bef-b6e0-6596-039519b086ea
+	fromColumn: 'gold vw_fact_encounter'.icd10_code
+	toColumn: 'gold vw_dim_diagnosis'.icd10_code
+
+relationship 77e278b5-c109-8484-22aa-2c761a4b8151
+	fromColumn: 'gold vw_fact_encounter'.surgical_kit_id
+	toColumn: 'gold vw_dim_surgical_kit'.surgical_kit_id
+

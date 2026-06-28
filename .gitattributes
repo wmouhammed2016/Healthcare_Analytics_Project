@@ -1,0 +1,11 @@
+# Normalize line endings for all text files to LF
+* text=auto eol=lf
+
+# Jupyter notebooks
+*.ipynb text eol=lf
+
+# Python
+*.py text eol=lf
+
+# SQL
+*.sql text eol=lf

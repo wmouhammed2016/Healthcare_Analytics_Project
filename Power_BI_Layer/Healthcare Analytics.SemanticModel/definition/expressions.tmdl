@@ -1,0 +1,65 @@
+expression 'gold vw_dq_clinical_coherence' =
+		let
+		    Source = Sql.Databases("localhost\SQLEXPRESS"),
+		    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+		    gold_vw_dq_clinical_coherence = HCWarehouse_N2{[Schema="gold",Item="vw_dq_clinical_coherence"]}[Data]
+		in
+		    gold_vw_dq_clinical_coherence
+	lineageTag: 4c68f63b-9a6d-4168-b378-2f7fc2ccb434
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
+expression 'gold vw_dq_fraud_signal_audit' =
+		let
+		    Source = Sql.Databases("localhost\SQLEXPRESS"),
+		    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+		    gold_vw_dq_fraud_signal_audit = HCWarehouse_N2{[Schema="gold",Item="vw_dq_fraud_signal_audit"]}[Data]
+		in
+		    gold_vw_dq_fraud_signal_audit
+	lineageTag: b7329322-f099-452e-b4dd-83e32c07af6b
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
+expression 'gold vw_dq_supply_chain_health' =
+		let
+		    Source = Sql.Databases("localhost\SQLEXPRESS"),
+		    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+		    gold_vw_dq_supply_chain_health = HCWarehouse_N2{[Schema="gold",Item="vw_dq_supply_chain_health"]}[Data]
+		in
+		    gold_vw_dq_supply_chain_health
+	lineageTag: 2dec1554-e169-43d3-bdc3-1e9f7fb069a8
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
+expression 'gold vw_dq_validation_summary' =
+		let
+		    Source = Sql.Databases("localhost\SQLEXPRESS"),
+		    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+		    gold_vw_dq_validation_summary = HCWarehouse_N2{[Schema="gold",Item="vw_dq_validation_summary"]}[Data]
+		in
+		    gold_vw_dq_validation_summary
+	lineageTag: f40afb55-25c8-4e5b-a8e3-eb0faec50469
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+
+expression 'gold vw_fact_encounter_all' =
+		let
+		    Source = Sql.Databases("localhost\SQLEXPRESS"),
+		    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+		    gold_vw_fact_encounter_all = HCWarehouse_N2{[Schema="gold",Item="vw_fact_encounter_all"]}[Data]
+		in
+		    gold_vw_fact_encounter_all
+	lineageTag: 7080e85e-d7b3-4486-8ff8-fe03566e4f19
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

@@ -1,0 +1,691 @@
+table 'gold vw_fact_encounter'
+	lineageTag: dce25a8b-084e-4bc7-923a-63431e71ec7f
+
+	column encounter_id
+		dataType: string
+		isKey
+		lineageTag: d0952df6-f23a-4787-aff7-27e77b5c63e7
+		summarizeBy: none
+		sourceColumn: encounter_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column patient_id
+		dataType: string
+		isHidden
+		lineageTag: 166bff34-4355-4e17-b019-ea7a41ff21a8
+		summarizeBy: none
+		sourceColumn: patient_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column icd10_code
+		dataType: string
+		isHidden
+		lineageTag: 003e1f5c-ef70-435a-9a7b-4db99c9ee5d3
+		summarizeBy: none
+		sourceColumn: icd10_code
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column cpt_code
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: c2fd2452-17d8-4ae6-9e38-66ea42e8af46
+		summarizeBy: none
+		sourceColumn: cpt_code
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column nurse_emp_id
+		dataType: string
+		isHidden
+		lineageTag: 381f2fb0-3b16-437f-866e-7250c1c7a554
+		summarizeBy: none
+		sourceColumn: nurse_emp_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column surgeon_emp_id
+		dataType: string
+		isHidden
+		lineageTag: 5aa46789-87c0-4d15-8a68-1b27052852ae
+		summarizeBy: none
+		sourceColumn: surgeon_emp_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column surgical_kit_id
+		dataType: string
+		isHidden
+		lineageTag: dca7d83c-cd35-480e-b9ca-76b96cc3946b
+		summarizeBy: none
+		sourceColumn: surgical_kit_id
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column discharge_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 6f6bfd73-4585-452a-92b2-4ba697674c52
+		summarizeBy: none
+		sourceColumn: discharge_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column triage_date
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: c9453f34-f316-4cc0-aa35-eeafdeeee892
+		summarizeBy: none
+		sourceColumn: triage_date
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column severity_index
+		dataType: double
+		lineageTag: f78bdca1-9204-4431-92ff-cd512af0a7b5
+		summarizeBy: sum
+		sourceColumn: severity_index
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column severity_tier
+		dataType: string
+		lineageTag: 2d93e8da-f21f-4e2e-99aa-99b980e353e9
+		summarizeBy: none
+		sourceColumn: severity_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column comorbidity_count
+		dataType: int64
+		formatString: 0
+		lineageTag: 39d8ea63-c64e-4f6e-8cee-7ed143dd1765
+		summarizeBy: sum
+		sourceColumn: comorbidity_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column readmission_30d_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 189fbd15-2eee-47ca-8305-3a25aca7dbcb
+		summarizeBy: sum
+		sourceColumn: readmission_30d_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column medication_adherence_pdc
+		dataType: double
+		lineageTag: 14003833-f97f-4089-86f7-4b694ea6a1b3
+		summarizeBy: sum
+		sourceColumn: medication_adherence_pdc
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column medication_adherent_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: c9bdc791-9881-4feb-9fc3-e140c099b26a
+		summarizeBy: sum
+		sourceColumn: medication_adherent_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column los_days
+		dataType: int64
+		formatString: 0
+		lineageTag: ab6aa713-92d4-4649-81d4-602141d23ccc
+		summarizeBy: sum
+		sourceColumn: los_days
+
+		annotation SummarizationSetBy = Automatic
+
+	column hba1c_pct
+		dataType: double
+		lineageTag: 5d891c3a-81c9-4216-8cfb-e6113256c501
+		summarizeBy: sum
+		sourceColumn: hba1c_pct
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column glycemic_control_tier
+		dataType: string
+		lineageTag: e967c8ac-7ead-4902-b2b5-e4985793cfce
+		summarizeBy: none
+		sourceColumn: glycemic_control_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column actual_or_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: 6da31a13-4b2f-44cd-ba64-772022de35e9
+		summarizeBy: sum
+		sourceColumn: actual_or_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column or_efficiency_ratio
+		dataType: double
+		lineageTag: 44029ca0-4f7a-4473-ba0b-e22836bfff2b
+		summarizeBy: sum
+		sourceColumn: or_efficiency_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column or_turnover_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: dbebc4dc-83a1-4997-bd1d-cd93ba900e71
+		summarizeBy: sum
+		sourceColumn: or_turnover_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column door_to_admit_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: fb339d5c-54e2-4b63-b7b5-0e5e95a5b575
+		summarizeBy: sum
+		sourceColumn: door_to_admit_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column bed_wait_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: 3f384b70-6fbf-4fd0-8200-38f9abfea880
+		summarizeBy: sum
+		sourceColumn: bed_wait_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column admit_to_or_minutes
+		dataType: int64
+		formatString: 0
+		lineageTag: 675ddb94-b8a6-4f0b-adb2-90610ebc4b27
+		summarizeBy: sum
+		sourceColumn: admit_to_or_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column bed_occupancy_pct
+		dataType: double
+		lineageTag: 3961a5c1-bdf2-4ea8-8e3c-d9c81db0da92
+		summarizeBy: sum
+		sourceColumn: bed_occupancy_pct
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column high_occupancy_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: ad85a6ab-854d-46e4-88d3-cf8e9b498c03
+		summarizeBy: sum
+		sourceColumn: high_occupancy_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column safety_incident_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: e9502c12-07ae-4ff2-8307-b9c64d264a0b
+		summarizeBy: sum
+		sourceColumn: safety_incident_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column readmission_window_end
+		dataType: dateTime
+		formatString: Long Date
+		lineageTag: 29f0502b-dc22-4592-a31b-f8b5559c83ba
+		summarizeBy: none
+		sourceColumn: readmission_window_end
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column submitted_charge_usd
+		dataType: double
+		lineageTag: 4305f6f8-6ce6-436f-862c-a0ceb72691ab
+		summarizeBy: sum
+		sourceColumn: submitted_charge_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column allowed_amount_usd
+		dataType: double
+		lineageTag: 92c87fa7-237d-4514-b602-fd75168b4633
+		summarizeBy: sum
+		sourceColumn: allowed_amount_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column patient_responsibility_usd
+		dataType: double
+		lineageTag: c5958089-2803-4ae7-8256-055f6e37fd03
+		summarizeBy: sum
+		sourceColumn: patient_responsibility_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column drg_weight
+		dataType: double
+		lineageTag: 2f28ef22-51c2-4275-afeb-c0846957011d
+		summarizeBy: sum
+		sourceColumn: drg_weight
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column charge_inflation_ratio
+		dataType: double
+		lineageTag: 7dbe1b06-373f-4f1a-a7ee-3bef3eccce7f
+		summarizeBy: sum
+		sourceColumn: charge_inflation_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column expected_reimbursement_usd
+		dataType: double
+		lineageTag: 49fac2d9-9c94-4421-b6e5-d1646945ee7c
+		summarizeBy: sum
+		sourceColumn: expected_reimbursement_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column margin_estimate_usd
+		dataType: double
+		lineageTag: da6a4da9-4d39-427e-abbe-d913ed8c2520
+		summarizeBy: sum
+		sourceColumn: margin_estimate_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column any_fraud_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 2c76475a-9e56-48b1-849e-ba8e730adb77
+		summarizeBy: sum
+		sourceColumn: any_fraud_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column fraud_upcoding_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 145c1add-26bc-4be5-8747-38f842b8ac26
+		summarizeBy: sum
+		sourceColumn: fraud_upcoding_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column fraud_duplicate_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 88575f04-e3ab-4ae7-a26f-0c06921758f4
+		summarizeBy: sum
+		sourceColumn: fraud_duplicate_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column fraud_unbundling_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 5638929e-7de3-4d61-8c7d-63d960b782c8
+		summarizeBy: sum
+		sourceColumn: fraud_unbundling_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column patients_per_nurse_ratio
+		dataType: int64
+		formatString: 0
+		lineageTag: a622b215-6647-4b02-abfc-4290396ecff0
+		summarizeBy: sum
+		sourceColumn: patients_per_nurse_ratio
+
+		annotation SummarizationSetBy = Automatic
+
+	column overtime_hours
+		dataType: double
+		lineageTag: 8ed2c395-eeb3-4070-b937-34ee9df72ece
+		summarizeBy: sum
+		sourceColumn: overtime_hours
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column burnout_composite
+		dataType: double
+		lineageTag: 5481b15d-93c8-4c7e-9e08-35c9363b299e
+		summarizeBy: sum
+		sourceColumn: burnout_composite
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column burnout_tier
+		dataType: string
+		lineageTag: bf127919-3684-4838-a15b-449138062739
+		summarizeBy: none
+		sourceColumn: burnout_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column turnover_risk_index
+		dataType: double
+		lineageTag: 2c55ef03-873d-4297-b486-427f1aa1291c
+		summarizeBy: sum
+		sourceColumn: turnover_risk_index
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column high_turnover_risk_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 78290403-d522-45d9-a375-c5dac63b9133
+		summarizeBy: sum
+		sourceColumn: high_turnover_risk_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column float_nurse_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: ea54ff94-381f-4c39-a151-f2fe949900b5
+		summarizeBy: sum
+		sourceColumn: float_nurse_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column cahps_nurse_communication
+		dataType: double
+		lineageTag: e3281f64-93e4-4151-92a3-60c3963c6f66
+		summarizeBy: sum
+		sourceColumn: cahps_nurse_communication
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_doctor_communication
+		dataType: double
+		lineageTag: 678e2457-3318-4085-b988-ea6ce2ac8f33
+		summarizeBy: sum
+		sourceColumn: cahps_doctor_communication
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_responsiveness
+		dataType: double
+		lineageTag: 5c1f140b-7ade-420e-a672-826690a6e5c8
+		summarizeBy: sum
+		sourceColumn: cahps_responsiveness
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_pain_management
+		dataType: double
+		lineageTag: 254bf5e9-220d-403d-920e-6b7e5ca8a9ee
+		summarizeBy: sum
+		sourceColumn: cahps_pain_management
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_discharge_info
+		dataType: double
+		lineageTag: 5e568ff3-8efb-4921-bfc5-99793a7763e8
+		summarizeBy: sum
+		sourceColumn: cahps_discharge_info
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_care_transition
+		dataType: double
+		lineageTag: 72548bd9-449f-4077-878b-3ab19c1936b7
+		summarizeBy: sum
+		sourceColumn: cahps_care_transition
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_cleanliness
+		dataType: double
+		lineageTag: 57c3b40b-17a2-493e-8833-2802023e0173
+		summarizeBy: sum
+		sourceColumn: cahps_cleanliness
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column cahps_quietness
+		dataType: double
+		lineageTag: 10d6ffde-40ae-48c2-a2a8-f701c892af39
+		summarizeBy: sum
+		sourceColumn: cahps_quietness
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column days_of_supply
+		dataType: double
+		lineageTag: cbfffa57-1137-481b-aa3e-cd8ab7726d4e
+		summarizeBy: sum
+		sourceColumn: days_of_supply
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column stockout_risk_flag
+		dataType: int64
+		formatString: 0
+		lineageTag: 01104581-502c-4dea-8a2e-91244f83e0ff
+		summarizeBy: sum
+		sourceColumn: stockout_risk_flag
+
+		annotation SummarizationSetBy = Automatic
+
+	column hedis_hba1c_tested
+		dataType: int64
+		formatString: 0
+		lineageTag: b74dcbba-6464-4461-a729-b8807ea45276
+		summarizeBy: sum
+		sourceColumn: hedis_hba1c_tested
+
+		annotation SummarizationSetBy = Automatic
+
+	column hedis_hba1c_poor_control
+		dataType: int64
+		formatString: 0
+		lineageTag: b84677c0-6474-4343-8f4c-a762961fc0e1
+		summarizeBy: sum
+		sourceColumn: hedis_hba1c_poor_control
+
+		annotation SummarizationSetBy = Automatic
+
+	column himss_emram_stage
+		dataType: int64
+		formatString: 0
+		lineageTag: 7468972a-f560-42da-8c48-1bda90c1427a
+		summarizeBy: sum
+		sourceColumn: himss_emram_stage
+
+		annotation SummarizationSetBy = Automatic
+
+	column age
+		dataType: int64
+		formatString: 0
+		lineageTag: 81d66025-aedc-4e39-9f0a-418b711309bf
+		summarizeBy: sum
+		sourceColumn: age
+
+		annotation SummarizationSetBy = Automatic
+
+	column age_group
+		dataType: string
+		lineageTag: e7626181-8ae4-44b1-9827-82f6f677941e
+		summarizeBy: none
+		sourceColumn: age_group
+
+		annotation SummarizationSetBy = Automatic
+
+	column encounter_hour
+		dataType: int64
+		formatString: 0
+		lineageTag: cc054797-ffae-42e1-b697-9cb21d14236c
+		summarizeBy: sum
+		sourceColumn: encounter_hour
+
+		annotation SummarizationSetBy = Automatic
+
+	column encounter_day_of_week
+		dataType: string
+		lineageTag: 4777a168-a316-4365-9c7c-8c88b01e446b
+		summarizeBy: none
+		sourceColumn: encounter_day_of_week
+
+		annotation SummarizationSetBy = Automatic
+
+	column encounter_year
+		dataType: int64
+		formatString: 0
+		lineageTag: aff77703-b3b3-4855-966a-5903a9da380e
+		summarizeBy: sum
+		sourceColumn: encounter_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column payer_sk
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 65ae31ef-4f87-4de2-9111-6f7ea43b69a2
+		summarizeBy: none
+		sourceColumn: payer_sk
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column unit_sk
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: a6eb88df-ccc1-451b-8b34-5cb51e3d87ea
+		summarizeBy: none
+		sourceColumn: unit_sk
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column incident_sk
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: e343d1f7-2cfc-4f44-985b-7b69dc8127dd
+		summarizeBy: none
+		sourceColumn: incident_sk
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column discharge_date_sk
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 1f1e12e3-297b-4244-a79c-79e5ae7e2298
+		summarizeBy: sum
+		sourceColumn: discharge_date_sk
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	column triage_date_sk
+		dataType: int64
+		isHidden
+		formatString: 0
+		lineageTag: 54ccc96b-129f-44fe-a81c-280983058d04
+		summarizeBy: none
+		sourceColumn: triage_date_sk
+
+		changedProperty = IsHidden
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_fact_encounter' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_fact_encounter = HCWarehouse_N2{[Schema="gold",Item="vw_fact_encounter"]}[Data]
+				in
+				    gold_vw_fact_encounter
+
+	annotation PBI_NavigationStepName = Navigation
+
+	annotation PBI_ResultType = Table
+

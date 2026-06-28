@@ -1,0 +1,2227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Business Pillars — Dashboard Demo</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* ========== RESET & BASE ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #FAFCFE;
+  color: #1E293B;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+/* ========== COLOR SYSTEM (Hospital Clinical) ========== */
+:root {
+  --bg: #FAFCFE;
+  --card: #FFFFFF;
+  --border: #E2E8F0;
+  --border-strong: #CBD5E1;
+  --text: #1E293B;
+  --text-sec: #64748B;
+  --text-light: #94A3B8;
+  --primary: #1976D2;        /* medical blue */
+  --primary-light: #E3F2FD;
+  --primary-dark: #0D47A1;
+  --green: #2E7D32;
+  --green-light: #E8F5E9;
+  --amber: #ED6C02;
+  --amber-light: #FFF3E0;
+  --red: #C62828;
+  --red-light: #FFEBEE;
+  --clinical: #1565C0;
+  --operational: #2E7D32;
+  --financial: #E65100;
+  --hr: #6A1B9A;
+  --supply: #00838F;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 1px 3px rgba(15,76,92,0.06), 0 1px 2px rgba(15,76,92,0.04);
+  --shadow-hover: 0 4px 12px rgba(15,76,92,0.10);
+}
+
+/* ========== TOP BAR ========== */
+.topbar {
+  background: linear-gradient(135deg, #0D47A1 0%, #1976D2 100%);
+  color: #fff;
+  padding: 18px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(13,71,161,0.18);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.topbar .brand { display: flex; align-items: center; gap: 14px; }
+.topbar .brand .logo {
+  width: 36px; height: 36px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.topbar h1 { font-size: 1.15rem; font-weight: 600; letter-spacing: 0.2px; }
+.topbar .subtitle { font-size: 0.78rem; opacity: 0.85; margin-top: 2px; }
+.topbar .freshness {
+  text-align: right;
+  font-size: 0.78rem;
+  opacity: 0.92;
+  line-height: 1.6;
+}
+.topbar .freshness .pill {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-left: 6px;
+}
+
+/* ========== TAB NAV ========== */
+.tabnav {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border-bottom: 1.5px solid var(--border);
+  padding: 0 24px;
+  position: sticky;
+  top: 72px;
+  z-index: 99;
+  overflow-x: auto;
+}
+.tabbtn {
+  padding: 14px 20px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-sec);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tabbtn:hover { color: var(--primary); background: var(--primary-light); }
+.tabbtn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tabbtn .tabdot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.tabbtn .ragflag {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 4px;
+}
+.ragflag.red { background: var(--red); }
+.ragflag.amber { background: var(--amber); }
+.ragflag.green { background: var(--green); }
+
+/* ========== LAYOUT ========== */
+.tabpanel { display: none; padding: 24px 32px 48px; }
+#panel-exec { padding: 14px 32px 16px; }
+.tabpanel.active { display: block; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* ========== FILTER PANE ========== */
+.filterpane {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  position: sticky;
+  top: 130px;
+  box-shadow: var(--shadow);
+}
+.filterpane h3 {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filterpane h3::before { content: "⏵"; color: var(--primary); font-size: 0.7rem; }
+.filtergroup { margin-bottom: 14px; }
+.filtergroup label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-sec);
+  margin-bottom: 5px;
+}
+.filtergroup select,
+.filtergroup input[type="text"],
+.filtergroup input[type="date"] {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--text);
+  background: #fff;
+  cursor: pointer;
+}
+.filtergroup select:focus,
+.filtergroup input:focus { outline: none; border-color: var(--primary); }
+.filtergroup .checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--text);
+  margin-top: 4px;
+  cursor: pointer;
+}
+.filtergroup .checkbox-row input { cursor: pointer; }
+.filtergroup .dual-input { display: flex; gap: 6px; }
+.filtergroup .dual-input input { width: 50%; }
+.filterbtn {
+  width: 100%;
+  padding: 9px;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  color: var(--text);
+  transition: all 0.15s;
+  margin-top: 6px;
+}
+.filterbtn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.filterbtn.primary:hover { background: var(--primary-dark); }
+.filterbtn:hover { background: var(--primary-light); border-color: var(--primary); }
+.filterpane .note {
+  font-size: 0.72rem;
+  color: var(--text-light);
+  margin-top: 12px;
+  padding: 8px 10px;
+  background: #F1F5F9;
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+/* ========== MAIN CONTENT ========== */
+.maincontent { min-width: 0; }
+
+.pillarheader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.pillarheader h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pillarheader .desc {
+  font-size: 0.85rem;
+  color: var(--text-sec);
+  margin-top: 4px;
+}
+.pillarheader .freshness-tag {
+  font-size: 0.75rem;
+  color: var(--text-sec);
+  text-align: right;
+  line-height: 1.6;
+}
+.pillarheader .freshness-tag .src {
+  display: inline-block;
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* ========== KPI HERO ROW ========== */
+.kpihero {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.kpitile {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.2s, transform 0.15s;
+  cursor: pointer;
+}
+.kpitile:hover { box-shadow: var(--shadow-hover); transform: translateY(-2px); }
+.kpitile.status-green { border-left-color: var(--green); }
+.kpitile.status-amber { border-left-color: var(--amber); }
+.kpitile.status-red { border-left-color: var(--red); }
+.kpitile .kpilabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-sec);
+  margin-bottom: 6px;
+}
+.kpitile .kpivalue {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.1;
+}
+.kpitile .kpivalue .unit {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-sec);
+  margin-left: 2px;
+}
+.kpitile .kpimeta {
+  font-size: 0.76rem;
+  color: var(--text-sec);
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.kpitile .kpimeta .delta-up { color: var(--red); font-weight: 600; }
+.kpitile .kpimeta .delta-down { color: var(--green); font-weight: 600; }
+.kpitile .kpimeta .delta-neutral { color: var(--amber); font-weight: 600; }
+.kpitile .kpitilefooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 10px;
+}
+.kpitile .sparkline-wrap {
+  width: 70px; height: 28px;
+}
+.kpitile .drillhint {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(13,71,161,0.92);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.kpitile:hover .drillhint { opacity: 1; }
+
+/* ========== BADGES ========== */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+.badge.green { background: var(--green-light); color: var(--green); }
+.badge.amber { background: var(--amber-light); color: var(--amber); }
+.badge.red { background: var(--red-light); color: var(--red); }
+.badge.gray { background: #F1F5F9; color: var(--text-sec); }
+
+/* ========== COMPARISON TOGGLE ========== */
+.togglebar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+}
+.togglebar .togglelabel {
+  font-weight: 600;
+  color: var(--text-sec);
+  margin-right: 4px;
+}
+.togglebtn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-strong);
+  background: #fff;
+  border-radius: 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-sec);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.togglebtn:hover { border-color: var(--primary); color: var(--primary); }
+.togglebtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ========== CHARTS ========== */
+.chartsrow {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+.chartsrow.even {
+  grid-template-columns: 1fr 1fr;
+}
+.chartcard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.chartcard h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.chartcard .chartsub {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-bottom: 14px;
+}
+.chartcard .chartcanvas-wrap {
+  height: 240px;
+  position: relative;
+}
+.chartinsight {
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(90deg, var(--primary-light) 0%, rgba(227,242,253,0.3) 100%);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+.chartinsight strong { color: var(--primary-dark); }
+
+/* ========== KPI TABLE ========== */
+.kpitablecard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+.kpitablecard h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.kpitablecard .chartsub {
+  font-size: 0.75rem;
+  color: var(--text-light);
+  margin-bottom: 14px;
+}
+.kpitable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.kpitable thead th {
+  background: #F1F5F9;
+  color: var(--text-sec);
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  border-bottom: 1.5px solid var(--border);
+}
+.kpitable tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.exec-scorecard thead th { padding: 7px 10px; font-size: 0.68rem; }
+.exec-scorecard tbody td { padding: 7px 10px; font-size: 0.76rem; line-height: 1.35; }
+.exec-scorecard .kpiname { font-size: 0.78rem; }
+.exec-scorecard .kpival { font-size: 0.8rem; }
+.exec-scorecard .kpitarget { font-size: 0.74rem; }
+.exec-scorecard .badge { padding: 2px 7px; font-size: 0.66rem; }
+.kpitable tbody tr:hover { background: #F8FAFC; }
+.kpitable tbody tr:last-child td { border-bottom: none; }
+.kpitable .kpiname { font-weight: 600; color: var(--text); }
+.kpitable .kpival { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.kpitable .kpitarget { color: var(--text-sec); font-variant-numeric: tabular-nums; }
+.kpitable .kpidelta { font-variant-numeric: tabular-nums; font-weight: 600; }
+.kpitable .kpidelta.pos { color: var(--green); }
+.kpitable .kpidelta.neg { color: var(--red); }
+.kpitable .kpidelta.neu { color: var(--amber); }
+
+/* ========== EXECUTIVE OVERVIEW ========== */
+.exec-banner {
+  background: linear-gradient(135deg, #C62828 0%, #ED6C02 100%);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 2px 8px rgba(198,40,40,0.15);
+}
+.exec-banner .banner-icon {
+  font-size: 1.3rem;
+  background: rgba(255,255,255,0.18);
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.exec-banner h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 1px; line-height: 1.3; }
+.exec-banner p { font-size: 0.76rem; opacity: 0.95; line-height: 1.4; margin: 0; }
+
+.exec-heros {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.exec-hero {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+.exec-hero.clinical { border-top-color: var(--clinical); }
+.exec-hero.operational { border-top-color: var(--operational); }
+.exec-hero.financial { border-top-color: var(--financial); }
+.exec-hero.hr { border-top-color: var(--hr); }
+.exec-hero.supply { border-top-color: var(--supply); }
+.exec-hero .eh-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-sec);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.exec-hero .eh-label .pilldot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.exec-hero .eh-kpiname { font-size: 0.74rem; color: var(--text); margin-top: 1px; font-weight: 600; line-height: 1.3; min-height: 1.9em; }
+.exec-hero .eh-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-top: 4px;
+  line-height: 1.1;
+}
+.exec-hero .eh-value .unit { font-size: 0.78rem; color: var(--text-sec); font-weight: 500; }
+.exec-hero .eh-meta {
+  font-size: 0.7rem;
+  color: var(--text-sec);
+  margin-top: 3px;
+  line-height: 1.3;
+}
+.exec-hero .eh-spark { width: 100%; height: 22px; margin-top: 6px; }
+.exec-hero .eh-status { position: absolute; top: 10px; right: 10px; }
+.exec-hero .eh-status .badge { padding: 2px 7px; font-size: 0.65rem; }
+
+.exec-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.exec-row .chartcard { padding: 12px 14px; }
+.exec-row .chartcard h3 { font-size: 0.85rem; margin-bottom: 2px; }
+.exec-row .chartcard .chartsub { font-size: 0.7rem; margin-bottom: 8px; }
+.exec-row .chartinsight { margin-top: 6px; padding: 6px 10px; font-size: 0.73rem; line-height: 1.45; }
+
+/* ========== FOOTER ========== */
+.footer {
+  text-align: center;
+  padding: 24px;
+  font-size: 0.78rem;
+  color: var(--text-light);
+  border-top: 1px solid var(--border);
+  margin-top: 24px;
+  background: #fff;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 1200px) {
+  .kpihero { grid-template-columns: repeat(2, 1fr); }
+  .exec-heros { grid-template-columns: repeat(2, 1fr); }
+  .chartsrow, .exec-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .filterpane { position: static; }
+  .pillarheader { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .pillarheader .freshness-tag { text-align: left; }
+}
+@media (max-width: 600px) {
+  .kpihero, .exec-heros { grid-template-columns: 1fr; }
+  .tabbtn { padding: 12px 14px; font-size: 0.8rem; }
+  .tabpanel { padding: 16px; }
+  .topbar { padding: 14px 18px; flex-direction: column; align-items: flex-start; gap: 8px; }
+  .topbar .freshness { text-align: left; }
+  .tabnav { top: 110px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ========== TOP BAR ========== -->
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">⚕</div>
+    <div>
+      <h1>Healthcare Business Pillars — Executive Dashboard</h1>
+      <div class="subtitle">Interactive demo • Curated scenario • For stakeholder review</div>
+    </div>
+  </div>
+  <div class="freshness">
+    <div>Last updated: <strong>2025-11-15 14:32</strong> (refreshed hourly)</div>
+    <div>
+      Sources:
+      <span class="pill">EHR · Epic</span>
+      <span class="pill">Claims · Optum</span>
+      <span class="pill">HRIS · Workday</span>
+      <span class="pill">ERP · Oracle</span>
+    </div>
+  </div>
+</header>
+
+<!-- ========== TAB NAV ========== -->
+<nav class="tabnav">
+  <button class="tabbtn active" data-tab="exec"><span class="tabdot" style="background:var(--primary)"></span>Executive Overview</button>
+  <button class="tabbtn" data-tab="clinical"><span class="tabdot" style="background:var(--clinical)"></span>Clinical <span class="ragflag amber" title="Amber flag"></span></button>
+  <button class="tabbtn" data-tab="operational"><span class="tabdot" style="background:var(--operational)"></span>Operational <span class="ragflag amber" title="Amber flag"></span></button>
+  <button class="tabbtn" data-tab="financial"><span class="tabdot" style="background:var(--financial)"></span>Financial (RCM) <span class="ragflag red" title="Red flag"></span></button>
+  <button class="tabbtn" data-tab="hr"><span class="tabdot" style="background:var(--hr)"></span>HR Management <span class="ragflag red" title="Red flag"></span></button>
+  <button class="tabbtn" data-tab="supply"><span class="tabdot" style="background:var(--supply)"></span>Supply Chain <span class="ragflag red" title="Red flag"></span></button>
+</nav>
+
+<!-- ============================================================
+     TAB 0: EXECUTIVE OVERVIEW
+     ============================================================ -->
+<section class="tabpanel active" id="panel-exec">
+  <div class="exec-banner">
+    <div class="banner-icon">⚠</div>
+    <div>
+      <h3>System Health: 3 of 5 pillars require executive attention</h3>
+      <p>Financial, HR, and Supply Chain off target — common root cause is Q3 ICU/ED staffing strain. Recommended: convene cross-pillar task force on ICU/ED capacity.</p>
+    </div>
+  </div>
+
+  <div class="exec-heros">
+    <div class="exec-hero clinical">
+      <span class="eh-status"><span class="badge green">On Target</span></span>
+      <div class="eh-label"><span class="pilldot" style="background:var(--clinical)"></span>Clinical</div>
+      <div class="eh-kpiname">30-Day Readmission Rate</div>
+      <div class="eh-value">12.4<span class="unit">%</span></div>
+      <div class="eh-meta">Target &lt;15% · ↓ 18% YoY</div>
+      <canvas class="eh-spark" id="spark-clinical"></canvas>
+    </div>
+
+    <div class="exec-hero operational">
+      <span class="eh-status"><span class="badge amber">Watch</span></span>
+      <div class="eh-label"><span class="pilldot" style="background:var(--operational)"></span>Operational</div>
+      <div class="eh-kpiname">ER Door-to-Doctor Time</div>
+      <div class="eh-value">34<span class="unit">min</span></div>
+      <div class="eh-meta">Target &lt;30 min · ↑ 21% QoQ</div>
+      <canvas class="eh-spark" id="spark-operational"></canvas>
+    </div>
+
+    <div class="exec-hero financial">
+      <span class="eh-status"><span class="badge red">Off Target</span></span>
+      <div class="eh-label"><span class="pilldot" style="background:var(--financial)"></span>Financial</div>
+      <div class="eh-kpiname">Claim Denial Rate</div>
+      <div class="eh-value">6.8<span class="unit">%</span></div>
+      <div class="eh-meta">Target &lt;5% · ↑ 1.8pp post-EHR migration</div>
+      <canvas class="eh-spark" id="spark-financial"></canvas>
+    </div>
+
+    <div class="exec-hero hr">
+      <span class="eh-status"><span class="badge red">Off Target</span></span>
+      <div class="eh-label"><span class="pilldot" style="background:var(--hr)"></span>HR</div>
+      <div class="eh-kpiname">Burnout Prevalence</div>
+      <div class="eh-value">31<span class="unit">%</span></div>
+      <div class="eh-meta">Alert &gt;25% · ICU & ED driving the spike</div>
+      <canvas class="eh-spark" id="spark-hr"></canvas>
+    </div>
+
+    <div class="exec-hero supply">
+      <span class="eh-status"><span class="badge red">Off Target</span></span>
+      <div class="eh-label"><span class="pilldot" style="background:var(--supply)"></span>Supply Chain</div>
+      <div class="eh-kpiname">Stockout Rate</div>
+      <div class="eh-value">4.2<span class="unit">/mo</span></div>
+      <div class="eh-meta">Target → 0 · ↑ 110% vs Q2</div>
+      <canvas class="eh-spark" id="spark-supply"></canvas>
+    </div>
+  </div>
+
+  <div class="exec-row">
+    <div class="chartcard">
+      <h3>Pillar Performance vs Target</h3>
+      <div class="chartsub">Composite RAG score across all 5 pillars (0 = far off target, 100 = on target)</div>
+      <div class="chartcanvas-wrap" style="height:185px">
+        <canvas id="execRadarChart"></canvas>
+      </div>
+      <div class="chartinsight">
+        <strong>Insight:</strong> Cascade visible — Clinical strong, but ICU/ED staffing strain propagated into Operational, Financial, and Supply Chain. Fix HR first to lift all three within 1–2 quarters.
+      </div>
+    </div>
+
+    <div class="chartcard">
+      <h3>Cross-Pillar KPI Trend (12 months)</h3>
+      <div class="chartsub">Indexed to 100 at start of period; lower = worse</div>
+      <div class="chartcanvas-wrap" style="height:185px">
+        <canvas id="execTrendChart"></canvas>
+      </div>
+      <div class="chartinsight">
+        <strong>Insight:</strong> Q3 inflection (Jul–Sep) visible across all 5 pillars simultaneously — shared root cause, not independent issues. Supply Chain degraded fastest due to surge outpacing safety stock.
+      </div>
+    </div>
+  </div>
+
+  <div class="kpitablecard" style="padding:12px 14px">
+    <h3 style="font-size:0.85rem">Executive Scorecard — Recommended Actions</h3>
+    <table class="kpitable exec-scorecard">
+      <thead>
+        <tr><th>Pillar</th><th>Headline KPI</th><th>Current</th><th>Target</th><th>Status</th><th>Recommended Action</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge" style="background:var(--primary-light);color:var(--clinical)">Clinical</span></td>
+          <td class="kpiname">30-Day Readmission</td>
+          <td class="kpival">12.4%</td>
+          <td class="kpitarget">&lt;15%</td>
+          <td><span class="badge green">On Target</span></td>
+          <td>Sustain discharge follow-up program; share playbook with peer facilities.</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:var(--primary-light);color:var(--operational)">Operational</span></td>
+          <td class="kpiname">ER Door-to-Doctor</td>
+          <td class="kpival">34 min</td>
+          <td class="kpitarget">&lt;30 min</td>
+          <td><span class="badge amber">Watch</span></td>
+          <td>Open triage fast-track for ESI-4/5; redeploy PRN staff to evening peak.</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:var(--primary-light);color:var(--financial)">Financial</span></td>
+          <td class="kpiname">Claim Denial Rate</td>
+          <td class="kpival">6.8%</td>
+          <td class="kpitarget">&lt;5%</td>
+          <td><span class="badge red">Off Target</span></td>
+          <td>Targeted coder retraining on EHR migration; weekly denial reason review.</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:var(--primary-light);color:var(--hr)">HR</span></td>
+          <td class="kpiname">Burnout Prevalence</td>
+          <td class="kpival">31%</td>
+          <td class="kpitarget">&lt;25%</td>
+          <td><span class="badge red">Off Target</span></td>
+          <td>Cap ICU/ED overtime now. 90-day: hire 12 ICU + 8 ED nurses. 6-mo: MBI resurvey.</td>
+        </tr>
+        <tr>
+          <td><span class="badge" style="background:var(--primary-light);color:var(--supply)">Supply Chain</span></td>
+          <td class="kpiname">Stockout Rate</td>
+          <td class="kpival">4.2/mo</td>
+          <td class="kpitarget">→ 0</td>
+          <td><span class="badge red">Off Target</span></td>
+          <td>Raise safety stock on top 20 critical SKUs; renegotiate 3 vendor SLAs.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ============================================================
+     TAB 1: CLINICAL
+     ============================================================ -->
+<section class="tabpanel" id="panel-clinical">
+  <div class="layout">
+    <aside class="filterpane">
+      <h3>Filters</h3>
+      <div class="filtergroup">
+        <label>Date Range</label>
+        <select><option>Last 12 months</option><option>Last 6 months</option><option>Last quarter</option><option>Custom...</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Facility</label>
+        <select><option>All facilities (12)</option><option>Main Campus</option><option>North Campus</option><option>West Campus</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Department</label>
+        <select><option>All departments</option><option>ICU</option><option>ED</option><option>Med-Surg</option><option>Cardiology</option><option>Oncology</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Provider</label>
+        <select><option>All providers</option><option>Dr. Ahmed</option><option>Dr. Chen</option><option>Dr. Patel</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Patient Age Band</label>
+        <select><option>All ages</option><option>0-17</option><option>18-44</option><option>45-64</option><option>65+</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Payer Mix</label>
+        <div class="checkbox-row"><input type="checkbox" checked> Commercial</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Medicare</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Medicaid</div>
+        <div class="checkbox-row"><input type="checkbox"> Self-pay</div>
+      </div>
+      <div class="filtergroup">
+        <label>CMI Range</label>
+        <div class="dual-input">
+          <input type="text" value="0.5">
+          <input type="text" value="3.5">
+        </div>
+      </div>
+      <button class="filterbtn primary">Apply Filters</button>
+      <button class="filterbtn">Reset</button>
+      <div class="note">Filters are demo-only in this prototype. Production build will re-query the data warehouse on Apply.</div>
+    </aside>
+
+    <div class="maincontent">
+      <div class="pillarheader">
+        <div>
+          <h2><span style="color:var(--clinical)">⚕</span> Clinical Analytics</h2>
+          <div class="desc">Patient outcomes, quality of care, and clinical effectiveness across the patient journey.</div>
+        </div>
+        <div class="freshness-tag">
+          <div>Last updated: 2025-11-15 14:32</div>
+          <div>Data source: <span class="src">EHR · Epic</span></div>
+        </div>
+      </div>
+
+      <!-- KPI Hero Row -->
+      <div class="kpihero">
+        <div class="kpitile status-green">
+          <div class="kpilabel">30-Day Readmission</div>
+          <div class="kpivalue">12.4<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;15% · <span class="delta-down">↓ 18% YoY</span></div>
+          <div class="kpitilefooter">
+            <span class="badge green">On Target</span>
+            <canvas class="sparkline-wrap" id="spark-clinical-1"></canvas>
+          </div>
+          <div class="drillhint">Drill down by department →</div>
+        </div>
+
+        <div class="kpitile status-red">
+          <div class="kpilabel">HAI Incidence</div>
+          <div class="kpivalue">2.8<span class="unit">/1k pt-days</span></div>
+          <div class="kpimeta">Target → 0 · <span class="delta-up">↑ 47% QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge red">Off Target</span>
+            <canvas class="sparkline-wrap" id="spark-clinical-2"></canvas>
+          </div>
+          <div class="drillhint">Drill down by pathogen →</div>
+        </div>
+
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Avg Length of Stay</div>
+          <div class="kpivalue">4.7<span class="unit">days</span></div>
+          <div class="kpimeta">Benchmark 4.5 · <span class="delta-up">↑ 0.3d QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-clinical-3"></canvas>
+          </div>
+          <div class="drillhint">Drill down by DRG →</div>
+        </div>
+
+        <div class="kpitile status-amber">
+          <div class="kpilabel">HbA1c Control</div>
+          <div class="kpivalue">68<span class="unit">%</span></div>
+          <div class="kpimeta">Target ≥70% · <span class="delta-up">↑ 2pp YoY</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-clinical-4"></canvas>
+          </div>
+          <div class="drillhint">Drill down by provider →</div>
+        </div>
+      </div>
+
+      <!-- Comparison Toggle -->
+      <div class="togglebar">
+        <span class="togglelabel">Compare:</span>
+        <button class="togglebtn active" data-compare="target">vs Target</button>
+        <button class="togglebtn" data-compare="qoq">vs Last Quarter</button>
+        <button class="togglebtn" data-compare="benchmark">vs National Benchmark</button>
+      </div>
+
+      <!-- Charts -->
+      <div class="chartsrow">
+        <div class="chartcard">
+          <h3>30-Day Readmission Trend (12 months)</h3>
+          <div class="chartsub">All-cause, risk-adjusted. Monthly % of discharges readmitted within 30 days.</div>
+          <div class="chartcanvas-wrap"><canvas id="clinicalTrendChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Readmissions dropped 18% YoY driven by improved discharge follow-up processes (post-discharge call program launched Oct 2024). However, Q3 (Jul–Sep) saw a mild uptick to 13.1% — directly correlated with the HAI spike in ICU, where sicker patients acquired infections that prolonged recovery and triggered returns. Targeted infection control in ICU should restore the downward trend by Q1 2026.
+          </div>
+        </div>
+        <div class="chartcard">
+          <h3>HAI Incidence by Pathogen</h3>
+          <div class="chartsub">Hospital-acquired infections per 1,000 patient-days, by type, trailing 12 months.</div>
+          <div class="chartcanvas-wrap"><canvas id="clinicalHaiChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> C. difficile (34%) and catheter-associated UTIs (28%) account for 62% of all HAIs — both highly preventable. The CAUTI spike is concentrated in ICU where nurse-to-patient ratios slipped to 1:3 during Q3 peak. A return to 1:2 ratios plus mandatory catheter-removal review at shift change is projected to cut CAUTI by 60% within 90 days.
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Table -->
+      <div class="kpitablecard">
+        <h3>All Clinical KPIs</h3>
+        <div class="chartsub">All 7 KPIs from the Clinical pillar — current value, target, variance, and status</div>
+        <table class="kpitable" data-pillar="clinical">
+          <thead>
+            <tr><th>KPI</th><th>Current</th><th>Target</th><th>Δ vs Target</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="kpiname">30-Day Readmission Rate</td>
+              <td class="kpival">12.4%</td>
+              <td class="kpitarget">&lt;15%</td>
+              <td class="kpidelta pos">−2.6 pp</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">HAI Incidence Rate</td>
+              <td class="kpival">2.8 / 1k pt-days</td>
+              <td class="kpitarget">→ 0</td>
+              <td class="kpidelta neg">+2.8</td>
+              <td><span class="badge red">Off Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Average Length of Stay</td>
+              <td class="kpival">4.7 days</td>
+              <td class="kpitarget">4.5 days</td>
+              <td class="kpidelta neg">+0.2 days</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">HbA1c Control Rate</td>
+              <td class="kpival">68%</td>
+              <td class="kpitarget">≥70%</td>
+              <td class="kpidelta neg">−2.0 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Medication Adherence (PDC)</td>
+              <td class="kpival">82%</td>
+              <td class="kpitarget">≥80%</td>
+              <td class="kpidelta pos">+2.0 pp</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Post-Discharge Follow-Up Compliance</td>
+              <td class="kpival">79%</td>
+              <td class="kpitarget">≥85%</td>
+              <td class="kpidelta neg">−6.0 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Mortality Index</td>
+              <td class="kpival">0.92</td>
+              <td class="kpitarget">&lt;1.0</td>
+              <td class="kpidelta pos">−0.08</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TAB 2: OPERATIONAL
+     ============================================================ -->
+<section class="tabpanel" id="panel-operational">
+  <div class="layout">
+    <aside class="filterpane">
+      <h3>Filters</h3>
+      <div class="filtergroup">
+        <label>Date Range</label>
+        <select><option>Last 12 months</option><option>Last 6 months</option><option>Last quarter</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Facility</label>
+        <select><option>All facilities</option><option>Main Campus</option><option>North Campus</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Unit / Department</label>
+        <select><option>All units</option><option>Emergency Dept</option><option>ICU</option><option>Operating Rooms</option><option>Med-Surg</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Shift</label>
+        <select><option>All shifts</option><option>Day (7a-3p)</option><option>Evening (3p-11p)</option><option>Night (11p-7a)</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Day of Week</label>
+        <select><option>All days</option><option>Weekdays only</option><option>Weekends only</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>ESI Triage Level</label>
+        <div class="checkbox-row"><input type="checkbox" checked> ESI-1 (critical)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> ESI-2 (emergent)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> ESI-3 (urgent)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> ESI-4 (less urgent)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> ESI-5 (non-urgent)</div>
+      </div>
+      <div class="filtergroup">
+        <label>Bed Type</label>
+        <select><option>All bed types</option><option>General</option><option>ICU</option><option>Step-down</option><option>Isolation</option></select>
+      </div>
+      <button class="filterbtn primary">Apply Filters</button>
+      <button class="filterbtn">Reset</button>
+      <div class="note">Filters are demo-only in this prototype.</div>
+    </aside>
+
+    <div class="maincontent">
+      <div class="pillarheader">
+        <div>
+          <h2><span style="color:var(--operational)">⚙</span> Operational Analytics</h2>
+          <div class="desc">Patient flow, resource utilisation, ER throughput, and safety incident management.</div>
+        </div>
+        <div class="freshness-tag">
+          <div>Last updated: 2025-11-15 14:32</div>
+          <div>Data source: <span class="src">ADT · Epic</span> <span class="src">OR System · Optum</span></div>
+        </div>
+      </div>
+
+      <div class="kpihero">
+        <div class="kpitile status-amber">
+          <div class="kpilabel">ER Door-to-Doctor</div>
+          <div class="kpivalue">34<span class="unit">min</span></div>
+          <div class="kpimeta">Target &lt;30 min · <span class="delta-up">↑ 21% QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-op-1"></canvas>
+          </div>
+          <div class="drillhint">Drill down by shift →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Bed Occupancy</div>
+          <div class="kpivalue">88<span class="unit">%</span></div>
+          <div class="kpimeta">Target 75–85% · <span class="delta-up">↑ 6pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-op-2"></canvas>
+          </div>
+          <div class="drillhint">Drill down by unit →</div>
+        </div>
+        <div class="kpitile status-green">
+          <div class="kpilabel">OR Utilisation</div>
+          <div class="kpivalue">78<span class="unit">%</span></div>
+          <div class="kpimeta">Target 70–85% · <span class="delta-down">↓ 2pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge green">On Target</span>
+            <canvas class="sparkline-wrap" id="spark-op-3"></canvas>
+          </div>
+          <div class="drillhint">Drill down by OR suite →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">LWBS Rate</div>
+          <div class="kpivalue">2.3<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;2% · <span class="delta-up">↑ 0.5pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-op-4"></canvas>
+          </div>
+          <div class="drillhint">Drill down by arrival hour →</div>
+        </div>
+      </div>
+
+      <div class="togglebar">
+        <span class="togglelabel">Compare:</span>
+        <button class="togglebtn active" data-compare="target">vs Target</button>
+        <button class="togglebtn" data-compare="qoq">vs Last Quarter</button>
+        <button class="togglebtn" data-compare="benchmark">vs National Benchmark</button>
+      </div>
+
+      <div class="chartsrow">
+        <div class="chartcard">
+          <h3>EDLOS Trend — Non-Admitted Patients (12 months)</h3>
+          <div class="chartsub">Emergency Department Length of Stay from arrival to discharge, minutes.</div>
+          <div class="chartcanvas-wrap"><canvas id="opEdlosChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> EDLOS for non-admitted patients held under the 4-hour target through Q1–Q2, then climbed steadily from July onward — directly mirroring the burnout spike in the ED (see HR tab). The Q3 breach (avg 248 min vs 240 target) triggered ambulance diversion on 11 days. Adding 2 triage nurses per evening shift is projected to bring EDLOS back under target within 6 weeks.
+          </div>
+        </div>
+        <div class="chartcard">
+          <h3>Bed Occupancy by Day of Week</h3>
+          <div class="chartsub">Average % of licensed beds occupied, by day, trailing 90 days.</div>
+          <div class="chartcanvas-wrap"><canvas id="opBedChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Occupancy runs hot Tue–Thu (averaging 92%, above the 85% safe threshold) but drops sharply on weekends (Sat–Sun at 71%). The midweek strain drives boarding in the ER and pushes door-to-doctor times up. Discharge process improvements to push discharges earlier in the day (currently peaking at 4 PM) would smooth the curve and unlock ~12 midweek beds by 11 AM.
+          </div>
+        </div>
+      </div>
+
+      <div class="kpitablecard">
+        <h3>All Operational KPIs</h3>
+        <div class="chartsub">All 7 KPIs from the Operational pillar</div>
+        <table class="kpitable" data-pillar="operational">
+          <thead>
+            <tr><th>KPI</th><th>Current</th><th>Target</th><th>Δ vs Target</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="kpiname">ER Door-to-Doctor Time</td>
+              <td class="kpival">34 min</td>
+              <td class="kpitarget">&lt;30 min</td>
+              <td class="kpidelta neg">+4 min</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Bed Occupancy Rate</td>
+              <td class="kpival">88%</td>
+              <td class="kpitarget">75–85%</td>
+              <td class="kpidelta neg">+3 pp above range</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">OR Utilisation Rate</td>
+              <td class="kpival">78%</td>
+              <td class="kpitarget">70–85%</td>
+              <td class="kpidelta pos">In range</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">OR Turnover Time</td>
+              <td class="kpival">22 min</td>
+              <td class="kpitarget">&lt;25 min</td>
+              <td class="kpidelta pos">−3 min</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">LWBS Rate</td>
+              <td class="kpival">2.3%</td>
+              <td class="kpitarget">&lt;2%</td>
+              <td class="kpidelta neg">+0.3 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Patient Safety Incident Rate</td>
+              <td class="kpival">1.8 / 1k pt-days</td>
+              <td class="kpitarget">→ 0</td>
+              <td class="kpidelta neg">+1.8</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Appointment Lead Time (urgent)</td>
+              <td class="kpival">9 days</td>
+              <td class="kpitarget">&lt;7 days</td>
+              <td class="kpidelta neg">+2 days</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TAB 3: FINANCIAL
+     ============================================================ -->
+<section class="tabpanel" id="panel-financial">
+  <div class="layout">
+    <aside class="filterpane">
+      <h3>Filters</h3>
+      <div class="filtergroup">
+        <label>Date Range</label>
+        <select><option>Last 12 months</option><option>Last quarter</option><option>YTD</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Facility</label>
+        <select><option>All facilities</option><option>Main Campus</option><option>North Campus</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Payer</label>
+        <select><option>All payers</option><option>Medicare</option><option>Medicaid</option><option>Blue Cross</option><option>UnitedHealth</option><option>Aetna</option><option>Cigna</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Service Line</label>
+        <select><option>All service lines</option><option>Inpatient</option><option>Outpatient</option><option>ED</option><option>Imaging</option><option>Surgery</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Claim Status</label>
+        <select><option>All claims</option><option>Paid</option><option>Denied</option><option>Pending</option><option>Appealed</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Denial Reason</label>
+        <div class="checkbox-row"><input type="checkbox" checked> Coding error</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Missing auth</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Eligibility</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Duplicate</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Timely filing</div>
+      </div>
+      <div class="filtergroup">
+        <label>Claim Value Range</label>
+        <div class="dual-input">
+          <input type="text" value="$0">
+          <input type="text" value="$500k">
+        </div>
+      </div>
+      <button class="filterbtn primary">Apply Filters</button>
+      <button class="filterbtn">Reset</button>
+      <div class="note">Filters are demo-only in this prototype.</div>
+    </aside>
+
+    <div class="maincontent">
+      <div class="pillarheader">
+        <div>
+          <h2><span style="color:var(--financial)">💰</span> Financial Analytics &amp; Revenue Cycle</h2>
+          <div class="desc">End-to-end revenue cycle from charge capture to patient collections, including fraud detection.</div>
+        </div>
+        <div class="freshness-tag">
+          <div>Last updated: 2025-11-15 14:32</div>
+          <div>Data source: <span class="src">Claims · Optum</span> <span class="src">EHR · Epic</span></div>
+        </div>
+      </div>
+
+      <div class="kpihero">
+        <div class="kpitile status-red">
+          <div class="kpilabel">Claim Denial Rate</div>
+          <div class="kpivalue">6.8<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;5% · <span class="delta-up">↑ 1.8pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge red">Off Target</span>
+            <canvas class="sparkline-wrap" id="spark-fin-1"></canvas>
+          </div>
+          <div class="drillhint">Drill down by payer →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Days in A/R</div>
+          <div class="kpivalue">47<span class="unit">days</span></div>
+          <div class="kpimeta">Target &lt;40 · <span class="delta-up">↑ 5d QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-fin-2"></canvas>
+          </div>
+          <div class="drillhint">Drill down by aging bucket →</div>
+        </div>
+        <div class="kpitile status-green">
+          <div class="kpilabel">Net Rev / Adj Adm</div>
+          <div class="kpivalue">$14,820</div>
+          <div class="kpimeta">Benchmark $14,500 · <span class="delta-down">↑ 2.2% YoY</span></div>
+          <div class="kpitilefooter">
+            <span class="badge green">On Target</span>
+            <canvas class="sparkline-wrap" id="spark-fin-3"></canvas>
+          </div>
+          <div class="drillhint">Drill down by service line →</div>
+        </div>
+        <div class="kpitile status-green">
+          <div class="kpilabel">FWA Detection Rate</div>
+          <div class="kpivalue">3.2<span class="unit">%</span></div>
+          <div class="kpimeta">Within ±10% of audit · <span class="delta-down">↑ 0.4pp YoY</span></div>
+          <div class="kpitilefooter">
+            <span class="badge green">On Target</span>
+            <canvas class="sparkline-wrap" id="spark-fin-4"></canvas>
+          </div>
+          <div class="drillhint">Drill down by flag type →</div>
+        </div>
+      </div>
+
+      <div class="togglebar">
+        <span class="togglelabel">Compare:</span>
+        <button class="togglebtn active" data-compare="target">vs Target</button>
+        <button class="togglebtn" data-compare="qoq">vs Last Quarter</button>
+        <button class="togglebtn" data-compare="benchmark">vs National Benchmark</button>
+      </div>
+
+      <div class="chartsrow">
+        <div class="chartcard">
+          <h3>Revenue Cycle Funnel (Trailing 90 Days)</h3>
+          <div class="chartsub">Volume and conversion at each of the 7 revenue cycle stages.</div>
+          <div class="chartcanvas-wrap"><canvas id="finFunnelChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> The funnel shows the biggest drop at Adjudication (68% → 89% pass-through), driven by a coding error spike following the EHR migration in May. The 6.8% denial rate translates to $1.94M in rework cost and 47-day A/R — direct cash-flow impact. Retraining 24 coders on the new EHR templates recovered 1.2pp in October, but full recovery to 5% target is projected for Q1 2026.
+          </div>
+        </div>
+        <div class="chartcard">
+          <h3>Claim Denial Reasons</h3>
+          <div class="chartsub">Distribution of denied claims by root cause, trailing 90 days.</div>
+          <div class="chartcanvas-wrap"><canvas id="finDenialChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Coding errors (42%) and missing prior authorisations (24%) account for two-thirds of denials — both addressable through process and training fixes. Coding errors are concentrated in 3 DRG families (cardiothoracic, ortho, oncology) where the EHR migration changed default ICD-10 mapping. A targeted 2-day refresher for coders handling these DRGs is projected to cut coding-related denials by 50% within 60 days.
+          </div>
+        </div>
+      </div>
+
+      <div class="kpitablecard">
+        <h3>All Financial KPIs</h3>
+        <div class="chartsub">All 7 KPIs from the Financial pillar</div>
+        <table class="kpitable" data-pillar="financial">
+          <thead>
+            <tr><th>KPI</th><th>Current</th><th>Target</th><th>Δ vs Target</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="kpiname">Net Revenue per Adjusted Admission</td>
+              <td class="kpival">$14,820</td>
+              <td class="kpitarget">$14,500</td>
+              <td class="kpidelta pos">+$320</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Claim Denial Rate</td>
+              <td class="kpival">6.8%</td>
+              <td class="kpitarget">&lt;5%</td>
+              <td class="kpidelta neg">+1.8 pp</td>
+              <td><span class="badge red">Off Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Days in Accounts Receivable</td>
+              <td class="kpival">47 days</td>
+              <td class="kpitarget">&lt;40 days</td>
+              <td class="kpidelta neg">+7 days</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Cost per Adjusted Discharge</td>
+              <td class="kpival">$11,250</td>
+              <td class="kpitarget">$11,400</td>
+              <td class="kpidelta pos">−$150</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Equipment Utilisation Rate</td>
+              <td class="kpival">73%</td>
+              <td class="kpitarget">70–85%</td>
+              <td class="kpidelta pos">In range</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Supply Cost per Admission</td>
+              <td class="kpival">$3,180</td>
+              <td class="kpitarget">$2,800–$3,400</td>
+              <td class="kpidelta pos">In range</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">FWA Detection Rate</td>
+              <td class="kpival">3.2%</td>
+              <td class="kpitarget">±10% of audit</td>
+              <td class="kpidelta pos">Aligned</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TAB 4: HR
+     ============================================================ -->
+<section class="tabpanel" id="panel-hr">
+  <div class="layout">
+    <aside class="filterpane">
+      <h3>Filters</h3>
+      <div class="filtergroup">
+        <label>Date Range</label>
+        <select><option>Last 12 months</option><option>Last quarter</option><option>YTD</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Facility</label>
+        <select><option>All facilities</option><option>Main Campus</option><option>North Campus</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Unit / Department</label>
+        <select><option>All units</option><option>ICU</option><option>ED</option><option>Med-Surg</option><option>OR</option><option>Outpatient</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Role</label>
+        <select><option>All roles</option><option>Registered Nurse</option><option>Physician</option><option>Advanced Practice</option><option>Tech</option><option>Support staff</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Shift</label>
+        <select><option>All shifts</option><option>Day</option><option>Evening</option><option>Night</option><option>Rotating</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>FTE Status</label>
+        <div class="checkbox-row"><input type="checkbox" checked> Full-time</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Part-time</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Per diem (PRN)</div>
+        <div class="checkbox-row"><input type="checkbox"> Travel/contract</div>
+      </div>
+      <div class="filtergroup">
+        <label>Tenure</label>
+        <select><option>All tenures</option><option>&lt;1 year</option><option>1–3 years</option><option>3–5 years</option><option>5+ years</option></select>
+      </div>
+      <button class="filterbtn primary">Apply Filters</button>
+      <button class="filterbtn">Reset</button>
+      <div class="note">Filters are demo-only in this prototype.</div>
+    </aside>
+
+    <div class="maincontent">
+      <div class="pillarheader">
+        <div>
+          <h2><span style="color:var(--hr)">👥</span> Human Resources Analytics</h2>
+          <div class="desc">Workforce management — burnout, turnover, staffing ratios, and scheduling.</div>
+        </div>
+        <div class="freshness-tag">
+          <div>Last updated: 2025-11-15 14:32</div>
+          <div>Data source: <span class="src">HRIS · Workday</span></div>
+        </div>
+      </div>
+
+      <div class="kpihero">
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Nurse Turnover</div>
+          <div class="kpivalue">19<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;15% · <span class="delta-up">↑ 3pp YoY</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-hr-1"></canvas>
+          </div>
+          <div class="drillhint">Drill down by unit →</div>
+        </div>
+        <div class="kpitile status-red">
+          <div class="kpilabel">Burnout Prevalence</div>
+          <div class="kpivalue">31<span class="unit">%</span></div>
+          <div class="kpimeta">Alert &gt;25% · <span class="delta-up">↑ 9pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge red">Off Target</span>
+            <canvas class="sparkline-wrap" id="spark-hr-2"></canvas>
+          </div>
+          <div class="drillhint">Drill down by MBI dimension →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">OT Hours / FTE</div>
+          <div class="kpivalue">13<span class="unit">hrs/mo</span></div>
+          <div class="kpimeta">Target &lt;10 · <span class="delta-up">↑ 4 hrs QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-hr-3"></canvas>
+          </div>
+          <div class="drillhint">Drill down by unit →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Vacancy Rate</div>
+          <div class="kpivalue">12<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;10% · <span class="delta-up">↑ 2pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-hr-4"></canvas>
+          </div>
+          <div class="drillhint">Drill down by role →</div>
+        </div>
+      </div>
+
+      <div class="togglebar">
+        <span class="togglelabel">Compare:</span>
+        <button class="togglebtn active" data-compare="target">vs Target</button>
+        <button class="togglebtn" data-compare="qoq">vs Last Quarter</button>
+        <button class="togglebtn" data-compare="benchmark">vs National Benchmark</button>
+      </div>
+
+      <div class="chartsrow">
+        <div class="chartcard">
+          <h3>Burnout Prevalence by Unit (MBI High scorers)</h3>
+          <div class="chartsub">% of staff scoring "High" on Maslach Burnout Inventory, by unit, latest survey.</div>
+          <div class="chartcanvas-wrap"><canvas id="hrBurnoutChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> ICU (38%) and ED (35%) are far above the 25% alert threshold — these are the same units driving the operational and clinical KPI degradation. The MBI sub-dimensions show "Emotional Exhaustion" is the dominant driver (not "Depersonalisation"), pointing to capacity strain rather than disengagement. This is reversible: hiring + ratio restoration typically reduces burnout by 8–12 pp within 6 months.
+          </div>
+        </div>
+        <div class="chartcard">
+          <h3>Nurse Turnover Trend (12 months)</h3>
+          <div class="chartsub">Rolling 12-month nurse turnover %, all units vs ICU/ED.</div>
+          <div class="chartcanvas-wrap"><canvas id="hrTurnoverChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Overall nurse turnover (19%) is creeping toward the national average (22%) but remains below it. However, ICU and ED turnover (28% and 31% respectively) is sharply worse — these two units lost 24 nurses combined in Q3, forcing 30% overtime coverage and creating the safety/quality ripple visible across all other pillars. Retention bonuses for ICU/ED nurses with 2+ years tenure are projected to halve turnover in those units within 12 months.
+          </div>
+        </div>
+      </div>
+
+      <div class="kpitablecard">
+        <h3>All HR KPIs</h3>
+        <div class="chartsub">All 6 KPIs from the HR pillar</div>
+        <table class="kpitable" data-pillar="hr">
+          <thead>
+            <tr><th>KPI</th><th>Current</th><th>Target</th><th>Δ vs Target</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="kpiname">Nurse Turnover Rate</td>
+              <td class="kpival">19%</td>
+              <td class="kpitarget">&lt;15%</td>
+              <td class="kpidelta neg">+4 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Burnout Prevalence Rate</td>
+              <td class="kpival">31%</td>
+              <td class="kpitarget">&lt;25%</td>
+              <td class="kpidelta neg">+6 pp</td>
+              <td><span class="badge red">Off Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Overtime Hours per FTE</td>
+              <td class="kpival">13 hrs/mo</td>
+              <td class="kpitarget">&lt;10 hrs/mo</td>
+              <td class="kpidelta neg">+3 hrs</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Nurse-to-Patient Ratio (General)</td>
+              <td class="kpival">5:1</td>
+              <td class="kpitarget">≤5:1</td>
+              <td class="kpidelta pos">At target</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Vacancy Rate</td>
+              <td class="kpival">12%</td>
+              <td class="kpitarget">&lt;10%</td>
+              <td class="kpidelta neg">+2 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Training Compliance Rate</td>
+              <td class="kpival">96%</td>
+              <td class="kpitarget">100%</td>
+              <td class="kpidelta neg">−4 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================
+     TAB 5: SUPPLY CHAIN
+     ============================================================ -->
+<section class="tabpanel" id="panel-supply">
+  <div class="layout">
+    <aside class="filterpane">
+      <h3>Filters</h3>
+      <div class="filtergroup">
+        <label>Date Range</label>
+        <select><option>Last 12 months</option><option>Last quarter</option><option>YTD</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Facility</label>
+        <select><option>All facilities</option><option>Main Campus</option><option>North Campus</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Category</label>
+        <select><option>All categories</option><option>Pharmaceuticals</option><option>Surgical supplies</option><option>PPE</option><option>Lab reagents</option><option>Implants</option><option>Capital equipment</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Vendor</label>
+        <select><option>All vendors</option><option>Cardinal Health</option><option>McKesson</option><option>Medline</option><option>Owens &amp; Minor</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>Stock Class</label>
+        <div class="checkbox-row"><input type="checkbox" checked> Class A (critical)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Class B (standard)</div>
+        <div class="checkbox-row"><input type="checkbox" checked> Class C (commodity)</div>
+      </div>
+      <div class="filtergroup">
+        <label>Storage Location</label>
+        <select><option>All locations</option><option>Central stores</option><option>OR satellite</option><option>ICU satellite</option><option>ED satellite</option></select>
+      </div>
+      <div class="filtergroup">
+        <label>PAR Level Status</label>
+        <select><option>All items</option><option>Below par</option><option>At par</option><option>Above par</option></select>
+      </div>
+      <button class="filterbtn primary">Apply Filters</button>
+      <button class="filterbtn">Reset</button>
+      <div class="note">Filters are demo-only in this prototype.</div>
+    </aside>
+
+    <div class="maincontent">
+      <div class="pillarheader">
+        <div>
+          <h2><span style="color:var(--supply)">📦</span> Supply Chain Analytics</h2>
+          <div class="desc">Procurement, storage, and consumption of medical supplies, pharmaceuticals, and equipment.</div>
+        </div>
+        <div class="freshness-tag">
+          <div>Last updated: 2025-11-15 14:32</div>
+          <div>Data source: <span class="src">ERP · Oracle</span></div>
+        </div>
+      </div>
+
+      <div class="kpihero">
+        <div class="kpitile status-green">
+          <div class="kpilabel">Inventory Turnover</div>
+          <div class="kpivalue">11<span class="unit">x/yr</span></div>
+          <div class="kpimeta">Target 10–15x · <span class="delta-down">↓ 1x QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge green">On Target</span>
+            <canvas class="sparkline-wrap" id="spark-sup-1"></canvas>
+          </div>
+          <div class="drillhint">Drill down by category →</div>
+        </div>
+        <div class="kpitile status-red">
+          <div class="kpilabel">Stockout Rate</div>
+          <div class="kpivalue">4.2<span class="unit">/mo</span></div>
+          <div class="kpimeta">Target → 0 · <span class="delta-up">↑ 110% QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge red">Off Target</span>
+            <canvas class="sparkline-wrap" id="spark-sup-2"></canvas>
+          </div>
+          <div class="drillhint">Drill down by SKU →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">On-Time Delivery</div>
+          <div class="kpivalue">96<span class="unit">%</span></div>
+          <div class="kpimeta">Target ≥98% · <span class="delta-up">↑ 1pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-sup-3"></canvas>
+          </div>
+          <div class="drillhint">Drill down by vendor →</div>
+        </div>
+        <div class="kpitile status-amber">
+          <div class="kpilabel">Expired Inventory</div>
+          <div class="kpivalue">0.7<span class="unit">%</span></div>
+          <div class="kpimeta">Target &lt;0.5% · <span class="delta-up">↑ 0.2pp QoQ</span></div>
+          <div class="kpitilefooter">
+            <span class="badge amber">Watch</span>
+            <canvas class="sparkline-wrap" id="spark-sup-4"></canvas>
+          </div>
+          <div class="drillhint">Drill down by category →</div>
+        </div>
+      </div>
+
+      <div class="togglebar">
+        <span class="togglelabel">Compare:</span>
+        <button class="togglebtn active" data-compare="target">vs Target</button>
+        <button class="togglebtn" data-compare="qoq">vs Last Quarter</button>
+        <button class="togglebtn" data-compare="benchmark">vs National Benchmark</button>
+      </div>
+
+      <div class="chartsrow">
+        <div class="chartcard">
+          <h3>Inventory Turnover Trend (12 months)</h3>
+          <div class="chartsub">Annualised turns, by month. Higher = inventory is moving faster.</div>
+          <div class="chartcanvas-wrap"><canvas id="supTurnoverChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Inventory turnover held within the 10–15x target band through Q2, then slipped in Q3 — the surge in critical-care demand (driven by the HAI spike in ICU) depleted safety stock faster than the replenishment cycle could respond. Turns recovered slightly in October as emergency orders arrived, but the underlying safety-stock parameters (set in 2022) need to be recalibrated to current demand patterns to prevent recurrence.
+          </div>
+        </div>
+        <div class="chartcard">
+          <h3>Stockouts by Category (Trailing 90 Days)</h3>
+          <div class="chartsub">Number of stockout events per category, with patient-impact flags.</div>
+          <div class="chartcanvas-wrap"><canvas id="supStockoutChart"></canvas></div>
+          <div class="chartinsight">
+            <strong>Insight:</strong> Pharmaceuticals (38% of stockouts) and surgical supplies (29%) dominate — and these are the categories with the highest patient-impact cost (cancelled procedures, delayed medication administration). 7 of the 12 stockout SKUs in the last 90 days were on the "critical" Class A list. Re-negotiating lead-time SLAs with the top 3 pharma suppliers and raising par levels on the top 20 critical SKUs is projected to cut stockouts by 70% within 60 days.
+          </div>
+        </div>
+      </div>
+
+      <div class="kpitablecard">
+        <h3>All Supply Chain KPIs</h3>
+        <div class="chartsub">All 6 KPIs from the Supply Chain pillar</div>
+        <table class="kpitable" data-pillar="supply">
+          <thead>
+            <tr><th>KPI</th><th>Current</th><th>Target</th><th>Δ vs Target</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="kpiname">Inventory Turnover</td>
+              <td class="kpival">11x/year</td>
+              <td class="kpitarget">10–15x</td>
+              <td class="kpidelta pos">In range</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Stockout Rate</td>
+              <td class="kpival">4.2/mo</td>
+              <td class="kpitarget">→ 0</td>
+              <td class="kpidelta neg">+4.2</td>
+              <td><span class="badge red">Off Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">On-Time Delivery Rate</td>
+              <td class="kpival">96%</td>
+              <td class="kpitarget">≥98%</td>
+              <td class="kpidelta neg">−2 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Supply Cost as % of Revenue</td>
+              <td class="kpival">22%</td>
+              <td class="kpitarget">20–30%</td>
+              <td class="kpidelta pos">In range</td>
+              <td><span class="badge green">On Target</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Expired Inventory Rate</td>
+              <td class="kpival">0.7%</td>
+              <td class="kpitarget">&lt;0.5%</td>
+              <td class="kpidelta neg">+0.2 pp</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+            <tr>
+              <td class="kpiname">Lead Time Variance</td>
+              <td class="kpival">2.1 days</td>
+              <td class="kpitarget">≤1.5 days</td>
+              <td class="kpidelta neg">+0.6 days</td>
+              <td><span class="badge amber">Watch</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========== FOOTER ========== -->
+<div class="footer">
+  Healthcare Business Pillars — Interactive Dashboard Demo · Curated scenario data for stakeholder review · v0.1 (2025-11-15)<br>
+  Based on the Healthcare Industry Concepts, Standards &amp; Terminology Guide (v1.0, 2025). Filters and drill-downs are visual mockups only.
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script>
+// ============== MOCK DATA ==============
+const MONTHS = ['Dec','Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov'];
+
+const DATA = {
+  // Executive sparklines (12 points each)
+  sparks: {
+    clinical:   [15.1, 14.8, 14.6, 14.2, 13.9, 13.5, 13.1, 13.3, 13.0, 12.8, 12.5, 12.4],
+    operational:[28, 29, 30, 30, 31, 31, 32, 33, 35, 36, 35, 34],
+    financial:  [5.0, 5.1, 5.0, 5.2, 6.1, 6.5, 6.7, 6.9, 7.1, 7.0, 6.9, 6.8],
+    hr:         [22, 22, 23, 23, 24, 25, 26, 28, 31, 32, 31, 31],
+    supply:     [2.0, 2.1, 2.0, 2.2, 2.5, 3.0, 3.8, 4.5, 5.2, 4.8, 4.4, 4.2]
+  },
+  // KPI tile sparklines
+  kpiSparks: {
+    'clinical-1': [15.1, 14.8, 14.6, 14.2, 13.9, 13.5, 13.1, 13.3, 13.0, 12.8, 12.5, 12.4],
+    'clinical-2': [1.9, 1.8, 1.9, 2.0, 2.1, 2.2, 2.5, 2.8, 3.2, 3.1, 2.9, 2.8],
+    'clinical-3': [4.4, 4.5, 4.5, 4.6, 4.6, 4.7, 4.7, 4.8, 4.9, 4.8, 4.7, 4.7],
+    'clinical-4': [64, 65, 65, 66, 66, 67, 67, 67, 68, 68, 68, 68],
+    'op-1':       [28, 29, 30, 30, 31, 31, 32, 33, 35, 36, 35, 34],
+    'op-2':       [82, 83, 84, 85, 86, 86, 87, 89, 90, 91, 89, 88],
+    'op-3':       [80, 79, 80, 81, 80, 79, 78, 77, 76, 77, 78, 78],
+    'op-4':       [1.8, 1.9, 1.9, 2.0, 2.0, 2.1, 2.2, 2.4, 2.5, 2.4, 2.3, 2.3],
+    'fin-1':      [5.0, 5.1, 5.0, 5.2, 6.1, 6.5, 6.7, 6.9, 7.1, 7.0, 6.9, 6.8],
+    'fin-2':      [40, 41, 41, 42, 44, 45, 46, 47, 48, 48, 47, 47],
+    'fin-3':      [14500, 14520, 14550, 14580, 14610, 14650, 14690, 14720, 14750, 14780, 14810, 14820],
+    'fin-4':      [2.8, 2.9, 2.9, 3.0, 3.0, 3.1, 3.1, 3.2, 3.2, 3.2, 3.2, 3.2],
+    'hr-1':       [16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19],
+    'hr-2':       [22, 22, 23, 23, 24, 25, 26, 28, 31, 32, 31, 31],
+    'hr-3':       [9, 9, 10, 10, 10, 11, 11, 12, 13, 14, 13, 13],
+    'hr-4':       [10, 10, 10, 11, 11, 11, 11, 12, 12, 13, 12, 12],
+    'sup-1':      [12, 12, 12, 11, 11, 11, 11, 10, 10, 10, 11, 11],
+    'sup-2':      [2.0, 2.1, 2.0, 2.2, 2.5, 3.0, 3.8, 4.5, 5.2, 4.8, 4.4, 4.2],
+    'sup-3':      [98, 98, 97, 97, 97, 96, 96, 95, 95, 96, 96, 96],
+    'sup-4':      [0.4, 0.4, 0.5, 0.5, 0.5, 0.6, 0.6, 0.7, 0.8, 0.7, 0.7, 0.7]
+  },
+  // Chart datasets
+  clinicalReadmit: [15.1, 14.8, 14.6, 14.2, 13.9, 13.5, 13.1, 13.3, 13.0, 12.8, 12.5, 12.4],
+  clinicalReadmitTarget: 15,
+  clinicalHai: {
+    labels: ['C. difficile','CAUTI','CLABSI','MRSA','SSI','VAP'],
+    values: [34, 28, 14, 11, 9, 4]
+  },
+  opEdlos: {
+    actual: [215, 222, 230, 232, 235, 240, 245, 250, 255, 252, 248, 248],
+    target: 240
+  },
+  opBed: {
+    labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+    values: [87, 92, 94, 93, 85, 73, 71]
+  },
+  finFunnel: {
+    labels: ['1. Charge Capture','2. Coding & Doc','3. Claims Submission','4. Adjudication','5. Payment','6. A/R Mgmt','7. Patient Collections'],
+    values: [100, 98, 97, 66, 89, 78, 71]
+  },
+  finDenial: {
+    labels: ['Coding error','Missing auth','Eligibility','Duplicate','Timely filing','Other'],
+    values: [42, 24, 14, 9, 7, 4]
+  },
+  hrBurnout: {
+    labels: ['ICU','Emergency Dept','Med-Surg','Operating Rooms','Outpatient','Pediatrics'],
+    values: [38, 35, 28, 22, 15, 12]
+  },
+  hrTurnover: {
+    overall: [16, 16, 17, 17, 17, 18, 18, 18, 19, 19, 19, 19],
+    icuEd:   [21, 22, 23, 24, 25, 26, 27, 28, 30, 31, 30, 28]
+  },
+  supTurnover: [12, 12, 12, 11, 11, 11, 11, 10, 10, 10, 11, 11],
+  supStockout: {
+    labels: ['Pharmaceuticals','Surgical supplies','PPE','Lab reagents','Implants','Other'],
+    values: [38, 29, 12, 10, 7, 4]
+  },
+  // Executive radar (0-100, higher = better)
+  execRadar: {
+    labels: ['Clinical','Operational','Financial','HR','Supply Chain'],
+    current: [85, 62, 48, 42, 55],
+    target:  [80, 80, 80, 80, 80]
+  },
+  // Cross-pillar trend (indexed to 100 at start)
+  execTrend: {
+    clinical:   [100, 99, 98, 97, 96, 96, 95, 96, 97, 98, 99, 100],
+    operational:[100, 99, 98, 98, 97, 96, 94, 91, 88, 90, 92, 93],
+    financial:  [100, 99, 100, 98, 92, 88, 86, 84, 82, 83, 84, 85],
+    hr:         [100, 100, 99, 98, 96, 94, 92, 88, 82, 80, 81, 82],
+    supply:     [100, 99, 100, 98, 95, 90, 82, 75, 70, 74, 78, 80]
+  }
+};
+
+// ============== CHART DEFAULTS ==============
+Chart.defaults.font.family = "'Segoe UI', system-ui, -apple-system, Roboto, sans-serif";
+Chart.defaults.font.size = 11;
+Chart.defaults.color = '#64748B';
+Chart.defaults.plugins.legend.labels.usePointStyle = true;
+Chart.defaults.plugins.legend.labels.boxWidth = 8;
+Chart.defaults.plugins.legend.labels.padding = 12;
+
+// ============== SPARKLINE RENDERER ==============
+function drawSparkline(canvasId, data, color) {
+  const el = document.getElementById(canvasId);
+  if (!el) return null;
+  const ctx = el.getContext('2d');
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.map((_, i) => i),
+      datasets: [{
+        data: data,
+        borderColor: color,
+        backgroundColor: color + '20',
+        borderWidth: 1.8,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } },
+      animation: false,
+      elements: { line: { borderJoinStyle: 'round' } }
+    }
+  });
+}
+
+// ============== CHART BUILDERS ==============
+const charts = {};
+
+function buildExecRadar() {
+  const el = document.getElementById('execRadarChart');
+  if (!el || charts.execRadar) return;
+  charts.execRadar = new Chart(el, {
+    type: 'radar',
+    data: {
+      labels: DATA.execRadar.labels,
+      datasets: [
+        { label: 'Current', data: DATA.execRadar.current, backgroundColor: 'rgba(25,118,210,0.18)', borderColor: '#1976D2', borderWidth: 2, pointBackgroundColor: '#1976D2', pointRadius: 4 },
+        { label: 'Target', data: DATA.execRadar.target, backgroundColor: 'rgba(46,125,50,0.08)', borderColor: '#2E7D32', borderWidth: 1.5, borderDash: [5,4], pointRadius: 0 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { padding: 14 } },
+        tooltip: { callbacks: { label: (c) => c.dataset.label + ': ' + c.parsed.r + ' / 100' } }
+      },
+      scales: {
+        r: {
+          beginAtZero: true, max: 100,
+          ticks: { stepSize: 25, color: '#94A3B8', backdropColor: 'transparent', font: { size: 10 } },
+          grid: { color: '#E2E8F0' },
+          angleLines: { color: '#E2E8F0' },
+          pointLabels: { font: { size: 12, weight: '600' }, color: '#1E293B' }
+        }
+      }
+    }
+  });
+}
+
+function buildExecTrend() {
+  const el = document.getElementById('execTrendChart');
+  if (!el || charts.execTrend) return;
+  charts.execTrend = new Chart(el, {
+    type: 'line',
+    data: {
+      labels: MONTHS,
+      datasets: [
+        { label: 'Clinical', data: DATA.execTrend.clinical, borderColor: '#1565C0', backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+        { label: 'Operational', data: DATA.execTrend.operational, borderColor: '#2E7D32', backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+        { label: 'Financial', data: DATA.execTrend.financial, borderColor: '#E65100', backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+        { label: 'HR', data: DATA.execTrend.hr, borderColor: '#6A1B9A', backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 },
+        { label: 'Supply Chain', data: DATA.execTrend.supply, borderColor: '#00838F', backgroundColor: 'transparent', borderWidth: 2, tension: 0.35, pointRadius: 0, pointHoverRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { padding: 14 } } },
+      scales: {
+        y: { title: { display: true, text: 'Index (100 = baseline)', font: { size: 10 } }, grid: { color: '#F1F5F9' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+}
+
+function buildClinicalCharts() {
+  // Trend
+  const tEl = document.getElementById('clinicalTrendChart');
+  if (tEl && !charts.clinicalTrend) {
+    charts.clinicalTrend = new Chart(tEl, {
+      type: 'line',
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { label: 'Readmission %', data: DATA.clinicalReadmit, borderColor: '#1565C0', backgroundColor: 'rgba(21,101,192,0.12)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#1565C0' },
+          { label: 'Target (15%)', data: Array(12).fill(15), borderColor: '#C62828', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { beginAtZero: false, min: 10, max: 18, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  // HAI bar
+  const hEl = document.getElementById('clinicalHaiChart');
+  if (hEl && !charts.clinicalHai) {
+    charts.clinicalHai = new Chart(hEl, {
+      type: 'bar',
+      data: {
+        labels: DATA.clinicalHai.labels,
+        datasets: [{ label: '% of total HAIs', data: DATA.clinicalHai.values, backgroundColor: ['#1565C0','#1976D2','#42A5F5','#64B5F6','#90CAF9','#BBDEFB'], borderRadius: 4, barThickness: 32 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+}
+
+function buildOpCharts() {
+  const eEl = document.getElementById('opEdlosChart');
+  if (eEl && !charts.opEdlos) {
+    charts.opEdlos = new Chart(eEl, {
+      type: 'line',
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { label: 'EDLOS (min)', data: DATA.opEdlos.actual, borderColor: '#2E7D32', backgroundColor: 'rgba(46,125,50,0.12)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#2E7D32' },
+          { label: 'Target (240 min)', data: Array(12).fill(240), borderColor: '#C62828', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { beginAtZero: false, min: 200, max: 280, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + ' min' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  const bEl = document.getElementById('opBedChart');
+  if (bEl && !charts.opBed) {
+    // Highlight over-threshold days
+    const colors = DATA.opBed.values.map(v => v > 85 ? '#ED6C02' : (v < 75 ? '#94A3B8' : '#2E7D32'));
+    charts.opBed = new Chart(bEl, {
+      type: 'bar',
+      data: {
+        labels: DATA.opBed.labels,
+        datasets: [{ label: 'Occupancy %', data: DATA.opBed.values, backgroundColor: colors, borderRadius: 4, barThickness: 36 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: false, min: 60, max: 100, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+}
+
+function buildFinCharts() {
+  const fEl = document.getElementById('finFunnelChart');
+  if (fEl && !charts.finFunnel) {
+    charts.finFunnel = new Chart(fEl, {
+      type: 'bar',
+      data: {
+        labels: DATA.finFunnel.labels,
+        datasets: [{ label: '% of stage-1 volume', data: DATA.finFunnel.values, backgroundColor: ['#E65100','#EF6C00','#F57C00','#FB8C00','#FF9800','#FFA726','#FFB74D'], borderRadius: 4 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { beginAtZero: true, max: 100, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  const dEl = document.getElementById('finDenialChart');
+  if (dEl && !charts.finDenial) {
+    charts.finDenial = new Chart(dEl, {
+      type: 'doughnut',
+      data: {
+        labels: DATA.finDenial.labels,
+        datasets: [{ data: DATA.finDenial.values, backgroundColor: ['#E65100','#EF6C00','#F57C00','#FB8C00','#FF9800','#FFB74D'], borderColor: '#fff', borderWidth: 2 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: { position: 'right', labels: { padding: 10, boxWidth: 12 } },
+          tooltip: { callbacks: { label: (c) => c.label + ': ' + c.parsed + '%' } }
+        }
+      }
+    });
+  }
+}
+
+function buildHrCharts() {
+  const bEl = document.getElementById('hrBurnoutChart');
+  if (bEl && !charts.hrBurnout) {
+    const colors = DATA.hrBurnout.values.map(v => v > 25 ? '#C62828' : (v > 20 ? '#ED6C02' : '#2E7D32'));
+    charts.hrBurnout = new Chart(bEl, {
+      type: 'bar',
+      data: {
+        labels: DATA.hrBurnout.labels,
+        datasets: [{ label: '% High MBI', data: DATA.hrBurnout.values, backgroundColor: colors, borderRadius: 4, barThickness: 22 }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          annotation: false
+        },
+        scales: {
+          x: { beginAtZero: true, max: 50, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  const tEl = document.getElementById('hrTurnoverChart');
+  if (tEl && !charts.hrTurnover) {
+    charts.hrTurnover = new Chart(tEl, {
+      type: 'line',
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { label: 'All nursing', data: DATA.hrTurnover.overall, borderColor: '#6A1B9A', backgroundColor: 'rgba(106,27,154,0.12)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3 },
+          { label: 'ICU + ED only', data: DATA.hrTurnover.icuEd, borderColor: '#C62828', backgroundColor: 'rgba(198,40,40,0.08)', borderWidth: 2.5, tension: 0.35, fill: false, pointRadius: 3 },
+          { label: 'Target (15%)', data: Array(12).fill(15), borderColor: '#2E7D32', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { beginAtZero: false, min: 12, max: 35, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+}
+
+function buildSupCharts() {
+  const tEl = document.getElementById('supTurnoverChart');
+  if (tEl && !charts.supTurnover) {
+    charts.supTurnover = new Chart(tEl, {
+      type: 'line',
+      data: {
+        labels: MONTHS,
+        datasets: [
+          { label: 'Annualised turns', data: DATA.supTurnover, borderColor: '#00838F', backgroundColor: 'rgba(0,131,143,0.12)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, pointBackgroundColor: '#00838F' },
+          { label: 'Target band (10–15x)', data: Array(12).fill(10), borderColor: '#2E7D32', borderWidth: 1.5, borderDash: [6,4], pointRadius: 0, fill: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } },
+        scales: {
+          y: { beginAtZero: false, min: 8, max: 16, grid: { color: '#F1F5F9' } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  const sEl = document.getElementById('supStockoutChart');
+  if (sEl && !charts.supStockout) {
+    const colors = DATA.supStockout.values.map((_, i) => i < 2 ? '#C62828' : (i < 4 ? '#ED6C02' : '#2E7D32'));
+    charts.supStockout = new Chart(sEl, {
+      type: 'bar',
+      data: {
+        labels: DATA.supStockout.labels,
+        datasets: [{ label: '% of stockouts', data: DATA.supStockout.values, backgroundColor: colors, borderRadius: 4, barThickness: 30 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, max: 45, grid: { color: '#F1F5F9' }, ticks: { callback: (v) => v + '%' } },
+          x: { grid: { display: false }, ticks: { maxRotation: 30, minRotation: 0 } }
+        }
+      }
+    });
+  }
+}
+
+// ============== SPARKLINES FOR EXECUTIVE TILES ==============
+function buildExecSparks() {
+  drawSparkline('spark-clinical',   DATA.sparks.clinical,    '#1565C0');
+  drawSparkline('spark-operational',DATA.sparks.operational, '#2E7D32');
+  drawSparkline('spark-financial',  DATA.sparks.financial,   '#E65100');
+  drawSparkline('spark-hr',         DATA.sparks.hr,          '#6A1B9A');
+  drawSparkline('spark-supply',     DATA.sparks.supply,      '#00838F');
+}
+
+// ============== KPI TILE SPARKLINES (per-pillar) ==============
+const sparkColorMap = {
+  'clinical-1':'#1565C0','clinical-2':'#C62828','clinical-3':'#ED6C02','clinical-4':'#ED6C02',
+  'op-1':'#ED6C02','op-2':'#ED6C02','op-3':'#2E7D32','op-4':'#ED6C02',
+  'fin-1':'#C62828','fin-2':'#ED6C02','fin-3':'#2E7D32','fin-4':'#2E7D32',
+  'hr-1':'#ED6C02','hr-2':'#C62828','hr-3':'#ED6C02','hr-4':'#ED6C02',
+  'sup-1':'#2E7D32','sup-2':'#C62828','sup-3':'#ED6C02','sup-4':'#ED6C02'
+};
+
+const sparkGroups = {
+  clinical: ['clinical-1','clinical-2','clinical-3','clinical-4'],
+  operational: ['op-1','op-2','op-3','op-4'],
+  financial: ['fin-1','fin-2','fin-3','fin-4'],
+  hr: ['hr-1','hr-2','hr-3','hr-4'],
+  supply: ['sup-1','sup-2','sup-3','sup-4']
+};
+
+function buildKpiSparksFor(pillar) {
+  const ids = sparkGroups[pillar] || [];
+  ids.forEach(id => {
+    if (!charts['spark-' + id]) {
+      drawSparkline('spark-' + id, DATA.kpiSparks[id], sparkColorMap[id] || '#1976D2');
+      // drawSparkline returns the chart instance but doesn't store it; track by id
+    }
+  });
+}
+
+// Wrap drawSparkline so we can track created charts by id
+const _originalDrawSparkline = drawSparkline;
+drawSparkline = function(canvasId, data, color) {
+  if (charts[canvasId]) return charts[canvasId];
+  const result = _originalDrawSparkline(canvasId, data, color);
+  if (result) charts[canvasId] = result;
+  return result;
+};
+
+// ============== TAB SWITCHING + LAZY CHART BUILD ==============
+const tabBuilders = {
+  exec:        () => { buildExecRadar(); buildExecTrend(); buildExecSparks(); },
+  clinical:    () => { buildClinicalCharts(); buildKpiSparksFor('clinical'); },
+  operational: () => { buildOpCharts(); buildKpiSparksFor('operational'); },
+  financial:   () => { buildFinCharts(); buildKpiSparksFor('financial'); },
+  hr:          () => { buildHrCharts(); buildKpiSparksFor('hr'); },
+  supply:      () => { buildSupCharts(); buildKpiSparksFor('supply'); }
+};
+
+document.querySelectorAll('.tabbtn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tabpanel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tabId = btn.dataset.tab;
+    document.getElementById('panel-' + tabId).classList.add('active');
+    // Lazy-build charts for this tab (slight delay to let CSS show the panel so canvases have dimensions)
+    setTimeout(() => {
+      if (tabBuilders[tabId]) tabBuilders[tabId]();
+    }, 30);
+  });
+});
+
+// ============== COMPARISON TOGGLE (VISUAL ONLY) ==============
+document.querySelectorAll('.togglebar').forEach(bar => {
+  bar.querySelectorAll('.togglebtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      bar.querySelectorAll('.togglebtn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      // Visual-only: flash the table rows to indicate "comparison has changed"
+      const table = bar.parentElement.parentElement.querySelector('.kpitable');
+      if (table) {
+        table.style.opacity = '0.5';
+        setTimeout(() => { table.style.opacity = '1'; }, 200);
+      }
+    });
+  });
+});
+
+// ============== INIT ON LOAD ==============
+window.addEventListener('DOMContentLoaded', () => {
+  // Build exec tab (visible by default)
+  buildExecRadar();
+  buildExecTrend();
+  buildExecSparks();
+  // Build KPI sparks for all tabs lazily but on load (hidden canvases will render when their tab becomes visible)
+  // Actually Chart.js needs the canvas to have dimensions, so we build them on tab click.
+  // However, building sparks for hidden canvases can produce zero-size charts; we rebuild on tab switch.
+});
+</script>
+</body>
+</html>

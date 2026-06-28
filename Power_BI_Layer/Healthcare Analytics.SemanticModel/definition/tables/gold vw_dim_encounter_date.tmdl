@@ -1,0 +1,122 @@
+table 'gold vw_dim_encounter_date'
+	lineageTag: b5b7068f-dbbd-4f38-8260-c95bd8fdd1b2
+	dataCategory: Time
+
+	column date_key
+		dataType: dateTime
+		isUnique
+		isKey
+		formatString: Short Date
+		lineageTag: 64283be1-4a87-4a65-abf1-3ccfe0654ddb
+		summarizeBy: none
+		sourceColumn: date_key
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation UnderlyingDateTimeDataType = Date
+
+	column calendar_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 78aae551-b31f-4495-a687-4688c6abbf05
+		summarizeBy: none
+		sourceColumn: calendar_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_quarter
+		dataType: int64
+		formatString: 0
+		lineageTag: aeb92f9d-8d3f-420c-9714-7ceb71d64b53
+		summarizeBy: none
+		sourceColumn: calendar_quarter
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_month_num
+		dataType: int64
+		formatString: 0
+		lineageTag: 1ccd4c71-57f3-4ea1-b5f8-dd6a51e3f871
+		summarizeBy: none
+		sourceColumn: calendar_month_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_month_name
+		dataType: string
+		lineageTag: 4b79e177-5872-4463-a984-1df296a65c3e
+		summarizeBy: none
+		sourceColumn: calendar_month_name
+		sortByColumn: calendar_month_num
+
+		changedProperty = SortByColumn
+
+		annotation SummarizationSetBy = Automatic
+
+	column calendar_week_num
+		dataType: int64
+		formatString: 0
+		lineageTag: 6a0bd818-a713-4ffc-a307-9b4dea391287
+		summarizeBy: none
+		sourceColumn: calendar_week_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column day_of_week_num
+		dataType: int64
+		formatString: 0
+		lineageTag: e1c1b066-9e04-4876-8fdf-d332d67b3dba
+		summarizeBy: none
+		sourceColumn: day_of_week_num
+
+		annotation SummarizationSetBy = Automatic
+
+	column day_of_week_name
+		dataType: string
+		lineageTag: 82493f18-3bca-4e16-ab15-46f7807c4d2e
+		summarizeBy: none
+		sourceColumn: day_of_week_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_weekend
+		dataType: int64
+		formatString: 0
+		lineageTag: 481931e1-b2a4-49c0-ba12-35a99329a00f
+		summarizeBy: none
+		sourceColumn: is_weekend
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_us_federal_holiday
+		dataType: int64
+		formatString: 0
+		lineageTag: 2e6932f2-b17c-48b5-bdca-5d03cdd4692e
+		summarizeBy: none
+		sourceColumn: is_us_federal_holiday
+
+		annotation SummarizationSetBy = Automatic
+
+	column date_sk
+		dataType: int64
+		formatString: 0
+		lineageTag: 8f0c227a-5338-4333-ba18-98d29d4fa79e
+		summarizeBy: none
+		sourceColumn: date_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_encounter_date' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_encounter_date = HCWarehouse_N2{[Schema="gold",Item="vw_dim_encounter_date"]}[Data]
+				in
+				    gold_vw_dim_encounter_date
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

@@ -1,0 +1,1264 @@
+table _Measures
+	lineageTag: a12eb2c8-0b9e-40d8-9af6-f686116045b7
+
+	/// Base count of all encounters in the current filter context. Used as the universal denominator for all rate-based KPIs across every dashboard page.
+	measure '# Total Encounters' =
+			// # Total Encounters
+			// Base count of all encounters in the current filter context.
+			// Used as the universal denominator for rate-based KPIs across all 5 domains.
+			// Returns BLANK (not zero) when no rows exist to prevent misleading zero values in visuals.
+			VAR TotalRows = COUNTROWS('gold vw_fact_encounter')
+			RETURN
+			    IF(TotalRows = 0, BLANK(), TotalRows)
+		formatString: #,##0
+		displayFolder: _Utilities
+		lineageTag: 9067d779-cd81-42c0-8b34-6bf1b13af303
+
+	/// Sum of Length of Stay (LOS) across all encounters. Used as the denominator for per-1,000-patient-days incidence rates such as HAI and Safety Incidents.
+	measure '# Total Patient Days' =
+			// # Total Patient Days
+			// Sum of Length of Stay across all encounters in context.
+			// Used as denominator for per-1,000-patient-days rates (HAI, Safety Incident Rate).
+			// Standard formula: incidents / patient days × 1,000.
+			VAR TotalDays = SUMX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[los_days]
+			)
+			RETURN
+			    IF(TotalDays = 0, BLANK(), TotalDays)
+		formatString: #,##0
+		displayFolder: _Utilities
+		lineageTag: b620aac0-0216-4b44-891f-a6690162b17a
+
+	/// Count of distinct patients with at least one encounter in context. Denominator for patient-level prevalence calculations.
+	measure '# Unique Patients' =
+			// # Unique Patients
+			// Distinct count of patients in the current filter context.
+			// Note: one patient can have multiple encounters; use this (not encounter count)
+			// for patient-level prevalence analysis (e.g. HEDIS population denominators).
+			DISTINCTCOUNT('gold vw_fact_encounter'[patient_id])
+		formatString: #,##0
+		displayFolder: _Utilities
+		lineageTag: daaf478f-06e1-4766-9ba5-58ac44799e0d
+
+	/// Count of distinct nurses appearing in at least one encounter in context. Denominator for per-nurse HR metrics.
+	measure '# Unique Nurses' =
+			// # Unique Nurses
+			// Distinct count of nurses in context.
+			// Used as denominator for per-nurse HR metrics: avg overtime, burnout prevalence,
+			// turnover risk rate. Reflects active nursing headcount for the selected filter period.
+			DISTINCTCOUNT('gold vw_fact_encounter'[nurse_emp_id])
+		formatString: #,##0
+		displayFolder: _Utilities
+		lineageTag: 415233b9-d7ae-41fa-bf9b-66d9cdcb87ce
+
+	/// Sum of all payer-billed charges before contractual adjustments. Represents gross billing potential.
+	measure '$ Total Submitted Charges' =
+			// $ Total Submitted Charges
+			// Gross charges billed to payers before contractual adjustments, denials, or write-offs.
+			// Represents the maximum revenue potential. Compare with Allowed Amount to compute
+			// the contractual adjustment burden and effective discount rate per payer.
+			SUM('gold vw_fact_encounter'[submitted_charge_usd])
+		formatString: $#,##0
+		displayFolder: _Utilities
+		lineageTag: 8bdd9e48-d44f-4b0e-b5d4-5a58caa7e199
+
+	/// Sum of payer-contracted allowed amounts — the net receivable after contractual adjustments. Primary revenue line for financial reporting.
+	measure '$ Total Allowed Revenue' =
+			// $ Total Allowed Revenue
+			// Payer-contracted allowed amounts — net receivable after contractual adjustments.
+			// This is the primary revenue figure for financial performance reporting.
+			// Differs from collected revenue: outstanding A/R and patient responsibility still apply.
+			SUM('gold vw_fact_encounter'[allowed_amount_usd])
+		formatString: $#,##0
+		displayFolder: _Utilities
+		lineageTag: cbc7d497-1ea5-4dbd-9e68-61419a8d7a96
+
+	/// Sum of estimated operating margins across all encounters. Computed in the gold layer as Allowed Amount minus overhead costs.
+	measure '$ Total Margin Estimate' =
+			// $ Total Margin Estimate
+			// Sum of estimated operating margins across all encounters in context.
+			// Computed upstream in the gold layer: margin_estimate_usd = allowed_amount - cost_basis.
+			// Use with Payer, Unit, and Service Line slicers to identify margin drivers and diluters.
+			SUM('gold vw_fact_encounter'[margin_estimate_usd])
+		formatString: $#,##0
+		displayFolder: _Utilities
+		lineageTag: 098d3b71-9565-426a-868e-8b7f120967fa
+
+	/// % of encounters followed by readmission within 30 days. Industry benchmark: < 15% (CMS HRRP target).
+	measure '30-Day Readmission Rate %' =
+			// [CLN] 30-Day Readmission Rate %
+			// Percentage of encounters followed by a hospital readmission within 30 days.
+			// CMS Hospital Readmissions Reduction Program (HRRP) target: < 15%.
+			// High rates signal poor discharge planning, inadequate care continuity, or patient non-adherence.
+			// Drill by Diagnosis, Unit, and Payer to identify cohorts driving the rate.
+			VAR ReadmittedEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[readmission_30d_flag] = 1
+			    )
+			VAR TotalEncounters = [# Total Encounters]
+			RETURN
+			    DIVIDE(ReadmittedEncounters, TotalEncounters, BLANK())
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: 59032208-0366-465c-89b4-a7d23bd7efc4
+
+	/// Hospital-acquired infections per 1,000 patient days, restricted to HAC-eligible incidents. Target: minimize to 0.
+	measure 'HAI Incidence Rate per 1k Pt-Days' =
+			// [CLN] HAI Incidence Rate per 1k Pt-Days
+			// Hospital-Acquired Infection rate per 1,000 patient days.
+			// Restricted to encounters where the safety incident is HAC-eligible (is_hac_eligible = 1
+			// from dimSafetyIncident), ensuring only hospital-acquired conditions are counted
+			// (not pre-existing infections present on admission).
+			// CMS HACRP target: minimize toward 0. Bottom 25% of hospitals face penalty adjustment.
+			VAR HAIEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[safety_incident_flag] = 1,
+			        'gold vw_dim_safety_incident'[is_hac_eligible] = 1
+			    )
+			VAR TotalPatientDays = [# Total Patient Days]
+			RETURN
+			    DIVIDE(HAIEncounters * 1000, TotalPatientDays, BLANK())
+		formatString: 0.00
+		displayFolder: 01 Clinical
+		lineageTag: a5414859-c7d5-49d5-b9ce-61f265b155a7
+
+	/// Average inpatient days per encounter. Benchmark: 4.5 days (facility target).
+	measure 'Avg Length of Stay (Days)' =
+			// [CLN] Avg Length of Stay (Days)
+			// Average number of inpatient days per encounter.
+			// Facility benchmark: 4.5 days; national average ~4.6 days (AHRQ 2024).
+			// Elevated LOS inflates bed occupancy, reduces throughput capacity, and increases cost per episode.
+			// Drill by Diagnosis (ICD-10), Severity Tier, and Unit to identify LOS outlier cohorts.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[los_days]
+			)
+		formatString: 0.0
+		displayFolder: 01 Clinical
+		lineageTag: 017d2698-97da-4e7e-8731-e8a86ce504f8
+
+	/// % of HEDIS-tested diabetic patients with good glycaemic control (HbA1c not in poor-control range). Target: ≥ 70% (HEDIS CDC-H).
+	measure 'HbA1c Control Rate %' =
+			// [CLN] HbA1c Control Rate %
+			// Proportion of diabetic encounters achieving good glycaemic control (HbA1c < 9%).
+			// Denominator: encounters where HbA1c testing was performed (hedis_hba1c_tested = 1).
+			// HEDIS CDC-H measure: target ≥ 70% of tested diabetic population under control.
+			// Poor control (HbA1c ≥ 9%) is associated with 2× readmission risk and higher complication costs.
+			VAR TestedEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[hedis_hba1c_tested] = 1
+			    )
+			VAR ControlledEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[hedis_hba1c_tested] = 1,
+			        'gold vw_fact_encounter'[hedis_hba1c_poor_control] = 0
+			    )
+			RETURN
+			    DIVIDE(ControlledEncounters, TestedEncounters, BLANK())
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: 11fe6d5c-1ee9-411d-a8f1-e063b870394e
+
+	/// % of diabetic encounters where HbA1c was tested during the period. HEDIS care gap indicator.
+	measure 'HEDIS HbA1c Tested Rate %' =
+			// [CLN] HEDIS HbA1c Tested Rate %
+			// Proportion of encounters flagged for diabetic management where HbA1c testing occurred.
+			// HEDIS CDC measure: all diabetic patients should receive ≥1 HbA1c test per calendar year.
+			// Low rates indicate a HEDIS care gap in diabetic monitoring.
+			// Use with Age Group and Diagnosis slicers to identify untested high-risk sub-populations.
+			VAR TestedEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[hedis_hba1c_tested] = 1
+			    )
+			RETURN
+			    DIVIDE(TestedEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: decfda29-de2e-4675-af2b-a96116bfbe4a
+
+	/// Average Proportion of Days Covered (PDC) across all encounters. PDC ≥ 0.80 = adherent. Target: avg PDC ≥ 80%.
+	measure 'Medication Adherence Rate (PDC Avg)' =
+			// [CLN] Medication Adherence Rate (PDC Avg)
+			// Average Proportion of Days Covered (PDC) across all encounters.
+			// PDC ranges 0.0–1.0; PDC ≥ 0.80 is the HEDIS-aligned threshold for 'adherent'.
+			// Low average PDC is a strong predictor of chronic disease complications and readmissions.
+			// Format as percentage: a value of 0.82 displays as 82%.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[medication_adherence_pdc]
+			)
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: b7eb6036-ab5a-4b34-bbc7-4711b762cb09
+
+	/// % of encounters where PDC ≥ 0.80 (medication_adherent_flag = 1). Population-level binary view of adherence.
+	measure 'Medication Adherence Population %' =
+			// [CLN] Medication Adherence Population %
+			// Proportion of encounters where the patient is classified as medication-adherent
+			// (PDC ≥ 0.80, flagged as medication_adherent_flag = 1).
+			// Complement to PDC Average: shows the binary population split (adherent vs non-adherent).
+			// Target: ≥ 80% of encounters classified as adherent.
+			VAR AdherentEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[medication_adherent_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(AdherentEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: 3476afff-74df-4f9f-b249-ec4ba7e6ce99
+
+	/// Proxy for post-discharge care continuity: % of encounters where the patient was adherent to medications AND did not readmit within 30 days.
+	measure 'Post-Discharge Care Continuity %' =
+			// [CLN] Post-Discharge Care Continuity %
+			// Proxy for post-discharge follow-up effectiveness, computed as the proportion of encounters
+			// where the patient was both medication-adherent (PDC ≥ 0.80) AND did not readmit within 30 days.
+			// This combination reflects successful care handoff, patient engagement, and ongoing medication access.
+			// Note: A dedicated follow-up compliance column is not present in this dataset;
+			// this is a clinically grounded proxy derived from HEDIS-aligned outcomes.
+			// Dashboard target equivalent: ≥ 85% care continuity rate.
+			VAR SuccessfulDischarges =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[medication_adherent_flag] = 1,
+			        'gold vw_fact_encounter'[readmission_30d_flag] = 0
+			    )
+			RETURN
+			    DIVIDE(SuccessfulDischarges, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 01 Clinical
+		lineageTag: 605c8ae0-ecfb-4c9d-821d-333cfba4794b
+
+	/// Average patient severity index (normalized around 1.0). Values < 1.0 indicate below-expected mortality risk. Aligned with AHRQ PSI methodology.
+	measure 'Avg Severity Index (Mortality Proxy)' =
+			// [CLN] Avg Severity Index (Mortality Proxy)
+			// Average clinical severity score (severity_index) across all encounters in context.
+			// Normalized around 1.0: values < 1.0 = below-expected mortality risk (favourable);
+			// values > 1.0 = above-expected risk. Aligned with AHRQ Patient Safety Indicator methodology.
+			// Dashboard target: < 1.0 — the facility is performing better than risk-adjusted expectation.
+			// Use with Diagnosis Category and Unit slicers to identify high-risk encounter clusters.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[severity_index]
+			)
+		formatString: 0.00
+		displayFolder: 01 Clinical
+		lineageTag: 2da1e039-3641-4110-8af7-7985d969e598
+
+	/// Average of all 8 CAHPS survey dimensions (0–10 scale). Reflects composite patient experience quality.
+	measure 'CAHPS Overall Patient Experience Score' =
+			// [CLN] CAHPS Overall Patient Experience Score
+			// Simple average of all 8 CAHPS H survey domains, each scored 0–10.
+			// Domains: Nurse Communication, Doctor Communication, Responsiveness of Staff,
+			// Pain Management, Discharge Information, Care Transition, Cleanliness, Quietness.
+			// CAHPS scores feed into CMS Value-Based Purchasing (VBP) programme total performance scores.
+			// Hospitals in the top quartile receive up to +1.75% payment adjustment.
+			VAR AvgCahps =
+			    AVERAGEX(
+			        'gold vw_fact_encounter',
+			        (
+			            'gold vw_fact_encounter'[cahps_nurse_communication] +
+			            'gold vw_fact_encounter'[cahps_doctor_communication] +
+			            'gold vw_fact_encounter'[cahps_responsiveness] +
+			            'gold vw_fact_encounter'[cahps_pain_management] +
+			            'gold vw_fact_encounter'[cahps_discharge_info] +
+			            'gold vw_fact_encounter'[cahps_care_transition] +
+			            'gold vw_fact_encounter'[cahps_cleanliness] +
+			            'gold vw_fact_encounter'[cahps_quietness]
+			        ) / 8
+			    )
+			RETURN AvgCahps
+		formatString: 0.0
+		displayFolder: 01 Clinical
+		lineageTag: 742e1094-0770-4137-9082-ce2bea746147
+
+	/// Average ER door-to-physician time in minutes. Target: < 30 min (JCI/CMS benchmark).
+	measure 'Avg Door-to-Doctor Time (min)' =
+			// [OPS] Avg Door-to-Doctor Time (min)
+			// Average time from patient arrival (triage) to physician evaluation, in minutes.
+			// JCI and CMS ER throughput benchmark target: < 30 minutes.
+			// High values indicate ER overcrowding, physician staffing deficits, or triage process gaps.
+			// Drill by Unit, Encounter Day of Week, and Encounter Hour to identify surge patterns.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[door_to_admit_minutes]
+			)
+		formatString: 0.0
+		displayFolder: 02 Operational
+		lineageTag: 9063f8da-9eed-410a-8b9f-53a525009eac
+
+	/// Average bed occupancy % across encounters. Optimal range: 75–85%.
+	measure 'Bed Occupancy Rate %' =
+			// [OPS] Bed Occupancy Rate %
+			// Average bed occupancy percentage across all encounters in context.
+			// Optimal throughput range: 75–85% (Joint Commission and NHS England guidance).
+			// > 85% signals overcrowding risk and increased safety incident probability.
+			// < 70% suggests over-built capacity or poor patient volume management.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[bed_occupancy_pct]
+			)
+		formatString: 0.0%
+		displayFolder: 02 Operational
+		lineageTag: b432b2f8-6991-4af2-b8d4-83631cc4c180
+
+	/// % of encounters flagged as high-occupancy events. Identifies surge periods straining staffing and safety.
+	measure 'High Occupancy Encounter Rate %' =
+			// [OPS] High Occupancy Encounter Rate %
+			// Proportion of encounters occurring during critically high bed occupancy conditions
+			// (high_occupancy_flag = 1, set when occupancy exceeds the facility threshold).
+			// High occupancy is directly correlated with increased safety incidents and longer door-to-doctor times.
+			// Use to identify recurring surge periods and right-size staffing response protocols.
+			VAR HighOccupancyEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[high_occupancy_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(HighOccupancyEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 02 Operational
+		lineageTag: 94ac3e51-1b86-442f-be3b-38cf5a148960
+
+	/// Average OR efficiency ratio (actual / expected OR minutes). Target: 70–85% utilisation band (AORN benchmark).
+	measure 'OR Utilisation Rate %' =
+			// [OPS] OR Utilisation Rate %
+			// Average ratio of actual operating room time used vs. planned/expected time per encounter.
+			// or_efficiency_ratio = actual_or_minutes / expected_or_minutes.
+			// AORN target range: 70–85% utilisation.
+			// < 70% = underutilised capacity (revenue lost); > 85% = scheduling pressure and overtime risk.
+			// Drill by Surgical Kit and Surgeon to identify efficiency drivers.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[or_efficiency_ratio]
+			)
+		formatString: 0.0%
+		displayFolder: 02 Operational
+		lineageTag: a7b3c8ca-02f4-4262-91f4-cf6f7544aa3f
+
+	/// Average time between surgical cases in the same OR. Target: < 25 min.
+	measure 'Avg OR Turnover Time (min)' =
+			// [OPS] Avg OR Turnover Time (min)
+			// Average time between the end of one surgical case and the start of the next in the same OR.
+			// AORN/ACS benchmark target: < 25 minutes.
+			// Reducing turnover time by even 5 minutes per case can add 1–2 additional surgical slots per day,
+			// directly increasing OR revenue capacity and reducing surgical backlog.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[or_turnover_minutes]
+			)
+		formatString: 0.0
+		displayFolder: 02 Operational
+		lineageTag: 3174134d-98d8-4536-8f6d-8ba287e36509
+
+	/// All patient safety incidents per 1,000 patient days. Target: minimize toward 0.
+	measure 'Patient Safety Incident Rate per 1k Pt-Days' =
+			// [OPS] Patient Safety Incident Rate per 1k Pt-Days
+			// Rate of any patient safety incident (safety_incident_flag = 1) per 1,000 patient days.
+			// Broader than the HAI rate: includes falls, medication errors, procedure complications,
+			// equipment failures, and all other reportable safety events.
+			// Denominator: total LOS days in context.
+			// Joint Commission and CMS target: minimize toward 0 across all incident types.
+			VAR SafetyEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[safety_incident_flag] = 1
+			    )
+			VAR TotalPatientDays = [# Total Patient Days]
+			RETURN
+			    DIVIDE(SafetyEncounters * 1000, TotalPatientDays, BLANK())
+		formatString: 0.00
+		displayFolder: 02 Operational
+		lineageTag: 583fdfa5-bc23-4484-a8b2-d8871262480e
+
+	/// % of encounters with a CMS-defined Hospital-Acquired Condition (HAC) incident. HACRP penalty threshold: bottom 25% of hospitals.
+	measure 'HAC-Eligible Incident Rate %' =
+			// [OPS] HAC-Eligible Incident Encounter Rate %
+			// Proportion of encounters with a safety incident qualifying as a Hospital-Acquired Condition (HAC).
+			// HACs develop during hospitalisation and are largely preventable (CMS Non-Payment Policy).
+			// The CMS Hospital-Acquired Conditions Reduction Programme (HACRP) penalises
+			// hospitals in the bottom 25% of HAC performance with a 1% payment reduction.
+			// Filter: safety_incident_flag = 1 AND is_hac_eligible = 1 (via dimSafetyIncident relationship).
+			VAR HACEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[safety_incident_flag] = 1,
+			        'gold vw_dim_safety_incident'[is_hac_eligible] = 1
+			    )
+			RETURN
+			    DIVIDE(HACEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 02 Operational
+		lineageTag: e4798dc4-7089-4868-9457-f98e9de19984
+
+	/// Average time waiting for a bed after admission decision. Proxy for inpatient boarding and flow bottleneck.
+	measure 'Avg Bed Wait Time (min)' =
+			// [OPS] Avg Bed Wait Time (min)
+			// Average time a patient waited for a bed after the admission decision was made, in minutes.
+			// This metric proxies inpatient flow bottleneck and ER boarding pressure.
+			// Elevated values correlate with ER overcrowding, delayed patient placement, and nursing dissatisfaction.
+			// High bed wait times combined with high occupancy rates signal capacity crisis conditions.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[bed_wait_minutes]
+			)
+		formatString: 0.0
+		displayFolder: 02 Operational
+		lineageTag: cb9f8c9d-1b3d-48ef-a6ce-08edfde7fa1e
+
+	/// Proxy for Left-Without-Being-Seen (LWBS) rate: % of encounters with bed wait > 180 min. ACEP target: < 2%.
+	measure 'LWBS Proxy Rate %' =
+			// [OPS] LWBS Proxy Rate % (Left Without Being Seen)
+			// Proportion of encounters where bed wait time exceeded 180 minutes — the clinical threshold
+			// at which patients are most likely to self-discharge before being seen by a physician.
+			// Note: LWBS is not directly captured as a flag in this dataset; this is a clinically grounded proxy.
+			// ACEP (American College of Emergency Physicians) target: < 2% of ER presentations.
+			// High LWBS rates represent lost revenue, reduced patient satisfaction, and potential safety risk.
+			VAR LongWaitEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[bed_wait_minutes] > 180
+			    )
+			RETURN
+			    DIVIDE(LongWaitEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 02 Operational
+		lineageTag: bf94bcf7-d62a-4ca4-a59b-b001eeb1b9e3
+
+	/// Average payer-contracted allowed amount per encounter — the net revenue unit. Equivalent to 'Net Revenue per Adjusted Admission'.
+	measure 'Avg Allowed Revenue per Encounter' =
+			// [FIN] Avg Allowed Revenue per Encounter
+			// Average payer-contracted allowed amount per encounter — the primary revenue unit.
+			// Equivalent to 'Net Revenue per Adjusted Admission' on the dashboard.
+			// Reflects actual receivable revenue after contractual adjustments (not collected cash).
+			// Drill by Payer and Diagnosis to identify revenue concentration and payer mix shift risk.
+			DIVIDE(
+			    SUM('gold vw_fact_encounter'[allowed_amount_usd]),
+			    [# Total Encounters],
+			    BLANK()
+			)
+		formatString: $#,##0
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: c6c1e63d-d921-4d27-81f4-83d0c356408a
+
+	/// FWA Detection Rate: % of encounters with at least one fraud, waste, or abuse indicator (upcoding, duplicate, or unbundling).
+	measure 'FWA Detection Rate %' =
+			// [FIN] FWA Detection Rate %
+			// Proportion of encounters flagged with at least one Fraud, Waste, or Abuse (FWA) indicator.
+			// Three FWA sub-types are tracked independently: upcoding, duplicate billing, and unbundling.
+			// This headline rate flags any encounter with any_fraud_flag = 1 (union of all three types).
+			// Compare against payer audit benchmarks; rates consistently above 5% warrant compliance review.
+			VAR FWAEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[any_fraud_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(FWAEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: ed0666c4-679f-4d30-b789-5124499bcd60
+
+	/// % of encounters flagged for upcoding (billing a more complex procedure than performed). Most common FWA type by value.
+	measure 'Upcoding Rate %' =
+			// [FIN] Upcoding Rate %
+			// Proportion of encounters flagged for billing upcoding — coding a more complex procedure
+			// than was actually performed to inflate reimbursement (e.g., billing CPT 99215 vs 99213).
+			// Upcoding is the most common FWA pattern by dollar value.
+			// OIG and Recovery Audit Contractors (RAC) specifically target this pattern.
+			// Drill by CPT Code and NPI Billing to identify high-risk providers or service lines.
+			VAR UpcodingEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[fraud_upcoding_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(UpcodingEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: cae19e0c-172a-48c5-8ff6-945c756f2a8c
+
+	/// % of encounters flagged for duplicate claim submission.
+	measure 'Duplicate Claim Rate %' =
+			// [FIN] Duplicate Claim Rate %
+			// Proportion of encounters flagged for duplicate billing — submitting the same claim
+			// more than once, typically due to system errors or unverified re-submissions.
+			// CMS estimates duplicate claims account for ~$3 billion annually in Medicare overpayments.
+			// Monitor by Payer and Encounter Month to catch systematic re-submission errors post-EHR migration.
+			VAR DuplicateEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[fraud_duplicate_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(DuplicateEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: 2c3584e5-038a-4596-9184-b11e7a76d9b6
+
+	/// % of encounters flagged for unbundling (billing separately for services that should be bundled under one CPT code).
+	measure 'Unbundling Rate %' =
+			// [FIN] Unbundling Rate %
+			// Proportion of encounters flagged for unbundling — billing component procedures separately
+			// when CMS requires them to be billed under a single bundled CPT code.
+			// Unbundling is explicitly prohibited under CMS billing guidelines (NCCI edits).
+			// Drill by CPT Code and Surgeon to identify specific bundling violations by procedure.
+			VAR UnbundlingEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[fraud_unbundling_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(UnbundlingEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: 54efd109-e058-4dca-ab8e-ecaee6c0040d
+
+	/// Average ratio of submitted charge to expected reimbursement. Values consistently > 1.5 trigger FWA audit flags.
+	measure 'Avg Charge Inflation Ratio' =
+			// [FIN] Avg Charge Inflation Ratio
+			// Average ratio of submitted charge to the gold-layer expected reimbursement per encounter.
+			// Values > 1.0 mean the hospital billed above expected reimbursement level.
+			// Ratios consistently > 1.5 are the primary trigger for automated FWA audit flags.
+			// Use alongside FWA rate and payer mix to identify billing patterns that attract audit risk.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[charge_inflation_ratio]
+			)
+		formatString: 0.00
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: 83e3040d-d4f5-4696-a5ff-1f3e236be99e
+
+	/// Average DRG weight (Case Mix Index). Values > 1.0 indicate more complex patients than national average.
+	measure 'Avg DRG Weight (Case Mix Index)' =
+			// [FIN] Avg DRG Weight (Case Mix Index)
+			// Average Diagnosis-Related Group (DRG) weight across encounters in context.
+			// CMI > 1.0 means the facility treats more clinically complex patients than the national average.
+			// CMI directly drives reimbursement under CMS Prospective Payment System (PPS):
+			// higher CMI = higher base payment per discharge.
+			// Use as a risk-adjustment denominator when comparing costs across units or periods.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[drg_weight]
+			)
+		formatString: 0.00
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: 203144a3-9955-4849-b7b0-798d65d80305
+
+	/// Operating margin as % of allowed revenue. Positive = profitable. Drill by payer and service line.
+	measure 'Operating Margin Rate %' =
+			// [FIN] Operating Margin Rate %
+			// Proportion of allowed revenue retained as estimated operating margin.
+			// Formula: Total Margin Estimate / Total Allowed Revenue.
+			// Positive values = profitable operations; negative = financial distress or cost overrun.
+			// Drill by Payer Mix and Unit to identify margin drivers (high-margin payers, high-cost units).
+			// Note: margin_estimate_usd is a gold-layer approximation; use with financial team validation.
+			DIVIDE(
+			    SUM('gold vw_fact_encounter'[margin_estimate_usd]),
+			    SUM('gold vw_fact_encounter'[allowed_amount_usd]),
+			    BLANK()
+			)
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: a23aa845-1e15-41df-9399-d27603022470
+
+	/// Average surgical kit cost per encounter. Sourced from dimSurgicalKit via RELATED. Represents direct supply cost unit.
+	measure 'Supply Cost per Encounter' =
+			// [FIN] Supply Cost per Encounter
+			// Average surgical kit cost attributed per encounter, sourced from the dimSurgicalKit dimension
+			// via the RELATED function (many-to-one join on surgical_kit_id).
+			// Represents the direct supply expenditure component of the Cost per Adjusted Discharge KPI.
+			// Use the Surgical Kit and Service Line slicers to compare kit cost efficiency by procedure type.
+			// SUMX + RELATED pattern is required because the cost lives in the dimension, not the fact.
+			VAR TotalKitCost =
+			    SUMX(
+			        'gold vw_fact_encounter',
+			        RELATED('gold vw_dim_surgical_kit'[kit_unit_cost_usd])
+			    )
+			RETURN
+			    DIVIDE(TotalKitCost, [# Total Encounters], BLANK())
+		formatString: $#,##0.00
+		displayFolder: 03 Financial & Revenue Cycle
+		lineageTag: c306520d-297c-41ea-ab92-0d9cd832bb8e
+
+	/// % of distinct nurses in context classified with high MBI burnout (High or Very High tier). Dashboard headline KPI. Target: < 25%.
+	measure 'Burnout Prevalence % (Nurse-Level)' =
+			// [HR] Burnout Prevalence % (Nurse-Level)
+			// Proportion of distinct nurses in context who appear in at least one encounter
+			// with a high burnout tier (High or Very High MBI composite).
+			// This is the nurse-level prevalence rate — the HR page headline KPI on the dashboard.
+			// MBI (Maslach Burnout Inventory) composite integrates Emotional Exhaustion,
+			// Depersonalisation, and inverted Personal Accomplishment sub-scores.
+			// Executive alert threshold: > 25% prevalence triggers escalation review.
+			VAR HighBurnoutNurses =
+			    CALCULATE(
+			        DISTINCTCOUNT('gold vw_fact_encounter'[nurse_emp_id]),
+			        'gold vw_fact_encounter'[burnout_tier] IN {"High", "Very High"}
+			    )
+			VAR TotalNurses = [# Unique Nurses]
+			RETURN
+			    DIVIDE(HighBurnoutNurses, TotalNurses, BLANK())
+		formatString: 0.0%
+		displayFolder: 04 HR & Workforce
+		lineageTag: bd9071c5-24ff-43ab-8379-1be1315663e2
+
+	/// Average MBI burnout composite score across all encounters. Higher = higher burnout severity.
+	measure 'Avg Burnout Composite Score (MBI)' =
+			// [HR] Avg Burnout Composite Score (MBI)
+			// Average MBI burnout composite score across all encounters in context.
+			// The composite integrates three MBI-GS sub-scales:
+			//   - Emotional Exhaustion (EE): workload and emotional depletion
+			//   - Depersonalisation (DP): detachment and cynicism toward patients
+			//   - Personal Accomplishment (PA): inverted as (6 - PA) per MBI-GS scoring convention
+			// Higher composite score = higher burnout severity.
+			// Useful as a trend measure: rising composite over time signals organisational stress accumulation.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[burnout_composite]
+			)
+		formatString: 0.00
+		displayFolder: 04 HR & Workforce
+		lineageTag: 877c854c-a5d7-4c6b-a1fe-66f821e9da56
+
+	/// % of encounters where the assigned nurse had a high burnout tier. Encounter-level burnout exposure rate.
+	measure 'High Burnout Encounter Rate %' =
+			// [HR] High Burnout Encounter Rate %
+			// Proportion of encounters where the assigned nurse had a High or Very High burnout composite.
+			// Encounter-level view of burnout exposure: reflects the patient-facing risk from burned-out staff.
+			// Research shows nurses with high MBI scores have 2× medication error rates and
+			// 40% lower patient satisfaction scores.
+			// Use alongside Nurse-to-Patient Ratio and Unit to identify which units expose most patients
+			// to high-burnout nursing care.
+			VAR HighBurnoutEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[burnout_tier] IN {"High", "Very High"}
+			    )
+			RETURN
+			    DIVIDE(HighBurnoutEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 04 HR & Workforce
+		lineageTag: 598bd9ee-d06a-44ca-aec6-25db18423d4e
+
+	/// % of distinct nurses flagged as high turnover risk. Target: < 15%. Cost per nurse replaced: ~$40k–$60k.
+	measure 'High Turnover Risk Rate % (Nurse-Level)' =
+			// [HR] High Turnover Risk Rate % (Nurse-Level)
+			// Proportion of distinct nurses assessed as high turnover risk
+			// (high_turnover_risk_flag = 1 in at least one encounter within context).
+			// Target: < 15% of nursing headcount classified as high-risk.
+			// Cost impact: replacing one nurse costs an estimated $40,000–$60,000 in recruitment,
+			// orientation, and productivity loss (NSI Nursing Solutions 2024 National Health Care Retention report).
+			// Use with Burnout Prevalence and Overtime Hours to build a composite retention risk score.
+			VAR HighRiskNurses =
+			    CALCULATE(
+			        DISTINCTCOUNT('gold vw_fact_encounter'[nurse_emp_id]),
+			        'gold vw_fact_encounter'[high_turnover_risk_flag] = 1
+			    )
+			VAR TotalNurses = [# Unique Nurses]
+			RETURN
+			    DIVIDE(HighRiskNurses, TotalNurses, BLANK())
+		formatString: 0.0%
+		displayFolder: 04 HR & Workforce
+		lineageTag: a567f837-48ff-4ad7-856b-fafd5fec3fe9
+
+	/// Average overtime hours per nurse, calculated as the per-nurse average of their per-encounter shift overtime. More meaningful than SUM/DISTINCTCOUNT for the '< 10 hrs/month' dashboard target.
+	measure 'Avg Overtime Hours per Nurse' =
+			// [HR] Avg Overtime Hours per Nurse (Per-Shift Average)
+			// Average overtime hours per nurse, computed correctly as a two-level average:
+			//   Level 1 — per nurse: CALCULATE(AVERAGE(overtime_hours)) gives each nurse their avg OT per encounter
+			//   Level 2 — across nurses: AVERAGEX iterates over distinct nurses and averages Level 1
+			// This avoids the SUM/DISTINCTCOUNT trap where summing across ~195 encounters per nurse
+			// produces an inflated number (290 hrs) that has no clinical meaning.
+			// The result is the average shift-level OT per nurse, interpretable relative to shift length.
+			// ANCC/Joint Commission guideline: < 10 overtime hours per nurse per month.
+			AVERAGEX(
+			    VALUES('gold vw_fact_encounter'[nurse_emp_id]),
+			    CALCULATE(
+			        AVERAGE('gold vw_fact_encounter'[overtime_hours])
+			    )
+			)
+		formatString: 0.0
+		displayFolder: 04 HR & Workforce
+		lineageTag: c4b79ce2-c497-4100-94e1-6646cb8f490d
+
+	/// Average patients per nurse across all encounters. Target: ≤ 5:1 general ward; ≤ 2:1 ICU.
+	measure 'Avg Nurse-to-Patient Ratio' =
+			// [HR] Avg Nurse-to-Patient Ratio
+			// Average number of patients per nurse across encounters in context.
+			// Regulatory targets (California AB 394 — the only US state with mandated ratios):
+			//   General ward: ≤ 5 patients per nurse
+			//   ICU/Critical Care: ≤ 2 patients per nurse
+			//   ER: ≤ 4 patients per nurse
+			// Higher ratios are directly linked to patient mortality, safety incidents,
+			// nurse burnout, and failure-to-rescue events.
+			// Drill by Unit to compare ratio compliance across ward types.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[patients_per_nurse_ratio]
+			)
+		formatString: 0.0
+		displayFolder: 04 HR & Workforce
+		lineageTag: e171230e-c325-450b-885e-75d67f52f09d
+
+	/// % of encounters staffed by a float/agency nurse. Proxy for vacancy rate and staffing gap. High rates increase safety risk.
+	measure 'Float Nurse Encounter Rate %' =
+			// [HR] Float Nurse Encounter Rate %
+			// Proportion of encounters staffed by a float (agency or per-diem) nurse.
+			// Float nurses unfamiliar with unit-specific protocols increase safety risk and reduce care continuity.
+			// This metric is used as a proxy for vacancy rate:
+			// sustained high float utilisation signals unfilled permanent nursing positions.
+			// Target: minimise float reliance; > 20% float rate in a unit triggers staffing review.
+			VAR FloatEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[float_nurse_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(FloatEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 04 HR & Workforce
+		lineageTag: aa7eebf2-eeb6-4a57-9ff0-d9fab1c7a56c
+
+	/// Average CAHPS nurse communication score (0–10 scale). Strong predictor of VBP reimbursement adjustment.
+	measure 'CAHPS Nurse Communication Score' =
+			// [HR] CAHPS Nurse Communication Score
+			// Average nurse communication score from the CAHPS H survey (0–10 scale).
+			// Measures how well nurses communicated with patients about their care, medicines, and test results.
+			// Highest-weighted CAHPS domain in CMS VBP Patient Experience scoring.
+			// Strong correlation with HCAHPS 'top box' response rates and 30-day readmission reduction.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[cahps_nurse_communication]
+			)
+		formatString: 0.0
+		displayFolder: 04 HR & Workforce
+		lineageTag: 3d5b3341-9710-437b-8c85-6282a2f074fc
+
+	/// Average CAHPS responsiveness score (0–10). Directly influenced by nurse-to-patient ratios.
+	measure 'CAHPS Responsiveness Score' =
+			// [HR] CAHPS Responsiveness Score
+			// Average staff responsiveness score from the CAHPS H survey (0–10 scale).
+			// Measures how quickly staff responded to patient calls for help and assistance requests.
+			// This domain is most directly influenced by nurse-to-patient ratios:
+			// when ratios exceed 5:1, responsiveness scores drop measurably.
+			// Lower scores in this domain are a leading indicator of nurse burnout and staffing insufficiency.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[cahps_responsiveness]
+			)
+		formatString: 0.0
+		displayFolder: 04 HR & Workforce
+		lineageTag: ec9b8fe9-c863-4866-ace2-8a1d5b552276
+
+	/// % of encounters where a kit stockout risk was flagged. Target: 0. Any non-zero rate warrants supply chain investigation.
+	measure 'Stockout Risk Encounter Rate %' =
+			// [SUP] Stockout Risk Encounter Rate %
+			// Proportion of encounters where a stockout risk was flagged for the associated surgical kit
+			// (stockout_risk_flag = 1, set when kit inventory falls below safe operating threshold).
+			// Stockouts in surgical settings cause case delays, cancellations, and patient safety risks.
+			// A non-zero rate in any period warrants immediate supply chain investigation.
+			// Drill by Surgical Kit and Unit to identify which kits and departments are most exposed.
+			VAR StockoutEncounters =
+			    CALCULATE(
+			        COUNTROWS('gold vw_fact_encounter'),
+			        'gold vw_fact_encounter'[stockout_risk_flag] = 1
+			    )
+			RETURN
+			    DIVIDE(StockoutEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 05 Supply Chain
+		lineageTag: 00dbd5f7-39e6-42e6-a363-be0c6d4641e1
+
+	/// Average days of surgical kit supply remaining at encounter time. Values near or below reorder point signal replenishment urgency.
+	measure 'Avg Days of Supply' =
+			// [SUP] Avg Days of Supply
+			// Average number of days of surgical kit supply remaining at the time of each encounter.
+			// Calculated upstream using current inventory and historical consumption rate.
+			// Values approaching the kit reorder point (kit_reorder_point from dimSurgicalKit) signal
+			// that replenishment orders should be triggered.
+			// Low averages combined with long lead times indicate a compounding stockout risk.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[days_of_supply]
+			)
+		formatString: 0.0
+		displayFolder: 05 Supply Chain
+		lineageTag: 8ba68bbb-49a0-4b72-8999-b84eaab7acd0
+
+	/// Average supplier lead time for kits used in encounters. Sourced from dimSurgicalKit. Longer lead time requires higher safety stock.
+	measure 'Avg Kit Lead Time (Days)' =
+			// [SUP] Avg Kit Lead Time (Days)
+			// Average supplier lead time (days from purchase order to delivery) for surgical kits used.
+			// Sourced from dimSurgicalKit[kit_lead_time_days] via the RELATED function.
+			// Lead time is the primary driver of reorder point calculation:
+			// Reorder Point = (Average Daily Consumption × Lead Time) + Safety Stock.
+			// Increasing lead times require proportional increases in safety stock and reorder points.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    RELATED('gold vw_dim_surgical_kit'[kit_lead_time_days])
+			)
+		formatString: 0.0
+		displayFolder: 05 Supply Chain
+		lineageTag: 61a3c53f-7dc9-4f2b-a201-645dbc18163a
+
+	/// Surgical kit supply cost as % of total allowed revenue. Target: 20–25% of net revenue for surgical departments.
+	measure 'Supply Cost as % of Allowed Revenue' =
+			// [SUP] Supply Cost as % of Allowed Revenue
+			// Surgical kit supply cost expressed as a proportion of total allowed revenue.
+			// Industry benchmark: supply costs should be 20–25% of net revenue for surgical departments.
+			// Rising supply costs compress operating margin even when revenue remains stable.
+			// Use with Surgical Kit slicer to identify high-cost kits with disproportionate revenue impact.
+			VAR TotalKitCost =
+			    SUMX(
+			        'gold vw_fact_encounter',
+			        RELATED('gold vw_dim_surgical_kit'[kit_unit_cost_usd])
+			    )
+			VAR TotalAllowedRevenue =
+			    SUM('gold vw_fact_encounter'[allowed_amount_usd])
+			RETURN
+			    DIVIDE(TotalKitCost, TotalAllowedRevenue, BLANK())
+		formatString: 0.0%
+		displayFolder: 05 Supply Chain
+		lineageTag: a1ee74be-5176-4e8c-b8f7-2f203862a109
+
+	/// % of encounters where kit days of supply was at or below the kit's reorder point — indicating critical inventory at time of procedure.
+	measure 'Below Reorder Point Rate %' =
+			// [SUP] Below Reorder Point Rate %
+			// Proportion of encounters where the kit's days of supply was at or below the kit's reorder point,
+			// indicating that surgical procedures were performed with critically low inventory levels.
+			// FILTER + RELATED pattern used here (not CALCULATE) because RELATED requires row context
+			// that FILTER provides by iterating over the fact table row by row.
+			// A non-zero rate means the hospital is absorbing supply risk during live surgical procedures.
+			VAR BelowReorderEncounters =
+			    COUNTROWS(
+			        FILTER(
+			            'gold vw_fact_encounter',
+			            'gold vw_fact_encounter'[days_of_supply]
+			                <= RELATED('gold vw_dim_surgical_kit'[kit_reorder_point])
+			        )
+			    )
+			RETURN
+			    DIVIDE(BelowReorderEncounters, [# Total Encounters], BLANK())
+		formatString: 0.0%
+		displayFolder: 05 Supply Chain
+		lineageTag: 9d6467b0-319e-4626-9565-15c1e160899f
+
+	/// Average reorder point (in units) across all kits used in encounters. Indicates stock level at which replenishment should be triggered.
+	measure 'Avg Kit Reorder Point (Units)' =
+			// [SUP] Avg Kit Reorder Point (Units)
+			// Average reorder point in units across all surgical kits appearing in encounters.
+			// Sourced from dimSurgicalKit[kit_reorder_point] via RELATED.
+			// When actual stock on hand falls below this level, replenishment orders should fire automatically.
+			// Use alongside Avg Days of Supply: if DoS < Reorder Point equivalent days, stockout risk is imminent.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    RELATED('gold vw_dim_surgical_kit'[kit_reorder_point])
+			)
+		formatString: 0.0
+		displayFolder: 05 Supply Chain
+		lineageTag: 5db62c1c-726a-4b34-8972-9e30af9f23f9
+
+	/// Average HIMSS EMRAM stage across encounters. Stage 7 = fully digital, analytics-ready. Minimum Stage 6 for HIMSS accreditation.
+	measure 'Avg HIMSS EMRAM Stage' =
+			// [SUP] Avg HIMSS EMRAM Stage
+			// Average HIMSS Electronic Medical Record Adoption Model (EMRAM) stage across encounters.
+			// Stages range 0–7; Stage 7 = fully paperless, interoperable, and AI-analytics-ready EMR.
+			// HIMSS Stage 6 accreditation requires closed-loop medication administration and full physician documentation.
+			// Placed in the Supply Chain folder as a technology readiness indicator for
+			// automated procurement, inventory management, and supply chain integration maturity.
+			// Facilities at Stage ≥ 6 can support real-time supply consumption tracking from the EMR.
+			AVERAGEX(
+			    'gold vw_fact_encounter',
+			    'gold vw_fact_encounter'[himss_emram_stage]
+			)
+		formatString: 0.0
+		displayFolder: 05 Supply Chain
+		lineageTag: b370c5cf-c2cc-4844-b89b-9c639d31774d
+
+	/// Executive headline: 30-Day Readmission Rate. References the Clinical measure directly.
+	measure 'EXEC — Readmission Rate %' =
+			// [EXEC] 30-Day Readmission Rate %
+			// Executive summary page headline KPI — Clinical pillar.
+			// References [30-Day Readmission Rate %] from the Clinical folder.
+			// Dashboard target: < 15% (CMS HRRP). Current benchmark: 12.4% (On Target).
+			[30-Day Readmission Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: d45edfa0-92ad-4a62-9609-3332ac2bafe8
+
+	/// Executive headline: Avg ER Door-to-Doctor Time. References the Operational measure.
+	measure 'EXEC — Door-to-Doctor Time (min)' =
+			// [EXEC] Avg Door-to-Doctor Time (min)
+			// Executive summary page headline KPI — Operational pillar.
+			// References [Avg Door-to-Doctor Time (min)] from the Operational folder.
+			// Dashboard target: < 30 min. Current benchmark: 34 min (Watch — above target).
+			[Avg Door-to-Doctor Time (min)]
+		formatString: 0
+		displayFolder: 00 Executive Overview
+		lineageTag: 90d44fc9-c342-49cf-8cc7-ed78fdd4b341
+
+	/// Executive headline: FWA Detection Rate. References the Financial measure.
+	measure 'EXEC — FWA Detection Rate %' =
+			// [EXEC] FWA Detection Rate %
+			// Executive summary page headline KPI — Financial pillar.
+			// References [FWA Detection Rate %] from the Financial folder.
+			// Dashboard target: benchmark within ±10% of audit expectation.
+			// Maps to 'Claim Denial Rate' on the executive scorecard: fraud-flagged claims proxy denials.
+			[FWA Detection Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: 166091c1-d8e3-4f2e-a369-cdf328d1d961
+
+	/// Executive headline: Nurse-Level Burnout Prevalence. References the HR measure.
+	measure 'EXEC — Burnout Prevalence %' =
+			// [EXEC] Burnout Prevalence %
+			// Executive summary page headline KPI — HR pillar.
+			// References [Burnout Prevalence % (Nurse-Level)] from the HR folder.
+			// Dashboard alert threshold: > 25% (current benchmark: 31% — Off Target).
+			// ICU and ED units are driving the spike per dashboard insight layer.
+			[Burnout Prevalence % (Nurse-Level)]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: a48a92a3-1ea4-4b30-a469-520d764670a9
+
+	/// Executive headline: Stockout Risk Rate. References the Supply Chain measure.
+	measure 'EXEC — Stockout Risk Rate %' =
+			// [EXEC] Stockout Risk Rate %
+			// Executive summary page headline KPI — Supply Chain pillar.
+			// References [Stockout Risk Encounter Rate %] from the Supply Chain folder.
+			// Dashboard target: 0 stockout events. Current benchmark: 4.2 events/month (Off Target).
+			[Stockout Risk Encounter Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: ba365184-4a1c-4785-95ff-9db451d6a6d2
+
+	/// RAG status for 30-Day Readmission Rate. Returns Green / Amber / Red for conditional formatting. Thresholds: Green <12%, Amber 12–15%, Red >15%.
+	measure 'RAG — Readmission Rate' =
+			// RAG Status — 30-Day Readmission Rate
+			// Returns a colour category string for conditional formatting in Power BI.
+			// Used with 'Field Value' conditional formatting on KPI cards and tables.
+			// Thresholds (CMS HRRP aligned): Green < 12% | Amber 12–15% | Red > 15%.
+			// Map to hex colours in PBI conditional formatting: Green = #2E7D32, Amber = #ED6C02, Red = #C62828.
+			VAR Rate = [30-Day Readmission Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate),   BLANK(),
+			        Rate < 0.12,     "Green",
+			        Rate <= 0.15,    "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview_RAG Status
+		lineageTag: 8217513d-e7cf-4ba7-aebe-6ade8a6b0935
+
+	/// RAG status for Burnout Prevalence. Returns Green / Amber / Red for conditional formatting. Thresholds: Green <20%, Amber 20–25%, Red >25%.
+	measure 'RAG — Burnout Prevalence' =
+			// RAG Status — Burnout Prevalence
+			// Returns a colour category string for conditional formatting in Power BI.
+			// Thresholds (MBI clinical guidance): Green < 20% | Amber 20–25% | Red > 25%.
+			// > 25% prevalence triggers executive review (dashboard alert threshold).
+			VAR Rate = [Burnout Prevalence % (Nurse-Level)]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate),   BLANK(),
+			        Rate < 0.20,     "Green",
+			        Rate <= 0.25,    "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview_RAG Status
+		lineageTag: 430ca681-7ff5-46fb-98b4-f68ec9bd1551
+
+	/// RAG status for Bed Occupancy Rate. Returns Green / Amber / Red. Target zone: 75–85%.
+	measure 'RAG — Bed Occupancy' =
+			// RAG Status — Bed Occupancy Rate
+			// Returns a colour category string for conditional formatting.
+			// Optimal zone: 75–85%. Below = under-utilised; above = overcrowding risk.
+			// Thresholds: Green 75–85% | Amber 85–92% or <70% | Red >92% or <65%.
+			VAR Rate = [Bed Occupancy Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate),               BLANK(),
+			        Rate >= 0.75 && Rate <= 0.85, "Green",
+			        Rate > 0.85 && Rate <= 0.92,  "Amber",
+			        Rate >= 0.65 && Rate < 0.75,  "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview_RAG Status
+		lineageTag: cb04c2d9-9584-4a7e-b3fa-8b5096c51784
+
+	/// RAG status for FWA Detection Rate. Returns Green / Amber / Red. Thresholds: Green <2%, Amber 2–5%, Red >5%.
+	measure 'RAG — FWA Detection Rate' =
+			// RAG Status — FWA Detection Rate
+			// Returns a colour category string for conditional formatting.
+			// Thresholds: Green < 2% | Amber 2–5% | Red > 5%.
+			// > 5% FWA rate triggers mandatory compliance department escalation.
+			VAR Rate = [FWA Detection Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate),   BLANK(),
+			        Rate < 0.02,     "Green",
+			        Rate <= 0.05,    "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview_RAG Status
+		lineageTag: cb66d351-6a89-4c16-915e-500c58fd2d8d
+
+	/// RAG status for Stockout Risk Rate. Returns Green / Amber / Red. Any non-zero rate = Amber or Red.
+	measure 'RAG — Stockout Risk' =
+			// RAG Status — Stockout Risk Rate
+			// Returns a colour category string for conditional formatting.
+			// Target: 0 stockout events in any period.
+			// Thresholds: Green = 0% | Amber 0–2% | Red > 2%.
+			// Even a single stockout event should be surfaced in reports as it risks surgical case cancellation.
+			VAR Rate = [Stockout Risk Encounter Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate),   BLANK(),
+			        Rate = 0,        "Green",
+			        Rate <= 0.02,    "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview_RAG Status
+		lineageTag: d43360cb-4b60-4d30-9244-8fd3e1182133
+
+	/// Executive headline: 30-Day Readmission Rate %. Target < 15% (CMS HRRP).
+	measure '[EXEC] 30-Day Readmission Rate %' =
+			// [EXEC] 30-Day Readmission Rate %
+			// Executive headline KPI for the Clinical pillar.
+			// References the Clinical domain measure directly.
+			// Target: < 15% (CMS HRRP). Current benchmark: 12.4% (On Target).
+			[30-Day Readmission Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: 470107e3-72c4-44ec-80cb-247697ee0036
+
+	/// Executive headline: Avg ER Door-to-Doctor time. Target: < 30 min.
+	measure '[EXEC] Avg Door-to-Doctor Time (min)' =
+			// [EXEC] Avg Door-to-Doctor Time (min)
+			// Executive headline KPI for the Operational pillar.
+			// References the Operational domain measure directly.
+			// Target: < 30 minutes (JCI benchmark).
+			[Avg Door-to-Doctor Time (min)]
+		formatString: 0.0
+		displayFolder: 00 Executive Overview
+		lineageTag: 99f85dc0-a0d7-49ca-8385-7d4d698223fc
+
+	/// Executive headline: FWA Detection Rate %. Represents claim integrity.
+	measure '[EXEC] FWA Detection Rate %' =
+			// [EXEC] FWA Detection Rate %
+			// Executive headline KPI for the Financial pillar.
+			// Represents the proportion of encounters with a fraud, waste, or abuse billing flag.
+			// References the Financial domain measure directly.
+			[FWA Detection Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: a99bdcfc-9c24-4fdf-b352-008a198d4d39
+
+	/// Executive headline: Nurse-level burnout prevalence %. Target: < 25% (executive alert threshold).
+	measure '[EXEC] Burnout Prevalence %' =
+			// [EXEC] Burnout Prevalence % (HR Pillar)
+			// Executive headline KPI for the HR & Workforce pillar.
+			// Nurse-level prevalence rate: proportion of distinct nurses with high MBI burnout.
+			// Executive alert fires when this rate exceeds 25%.
+			// References the HR domain measure directly.
+			[Burnout Prevalence % (Nurse-Level)]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: 301aab7f-19ea-4574-ab30-be8842fff724
+
+	/// Executive headline: % of encounters with a stockout risk flag. Target: 0.
+	measure '[EXEC] Stockout Risk Rate %' =
+			// [EXEC] Stockout Risk Rate %
+			// Executive headline KPI for the Supply Chain pillar.
+			// Proportion of encounters where a surgical kit stockout risk was active.
+			// Any non-zero rate in an executive period review is an escalation signal.
+			// References the Supply Chain domain measure directly.
+			[Stockout Risk Encounter Rate %]
+		formatString: 0.0%
+		displayFolder: 00 Executive Overview
+		lineageTag: 38e31505-88af-42a8-98c3-9a90c44c8ad4
+
+	/// RAG status for 30-Day Readmission Rate. Green < 12%, Amber 12-15%, Red > 15%. For conditional formatting use.
+	measure '[RAG] Readmission Status' =
+			// [RAG] 30-Day Readmission Status
+			// Returns a text RAG status for use in conditional formatting rules and status indicator visuals.
+			// Green: rate < 12% (outperforming target)
+			// Amber: 12% ≤ rate ≤ 15% (within target range but approaching threshold)
+			// Red: rate > 15% (CMS HRRP penalty risk)
+			// Usage: apply this measure as the conditional formatting field on a KPI card or table.
+			VAR Rate = [30-Day Readmission Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate), BLANK(),
+			        Rate < 0.12, "Green",
+			        Rate <= 0.15, "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview\RAG Status
+		lineageTag: ba0739f9-a58e-48e9-bced-a4cf80f087c6
+
+	/// RAG status for Burnout Prevalence. Green < 20%, Amber 20-25%, Red > 25%.
+	measure '[RAG] Burnout Prevalence Status' =
+			// [RAG] Burnout Prevalence Status
+			// Returns RAG text for nurse-level burnout prevalence rate.
+			// Green: < 20% (well-managed)
+			// Amber: 20–25% (watch — approaching executive alert threshold)
+			// Red: > 25% (executive escalation required per HR policy)
+			VAR Rate = [Burnout Prevalence % (Nurse-Level)]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate), BLANK(),
+			        Rate < 0.20, "Green",
+			        Rate <= 0.25, "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview\RAG Status
+		lineageTag: 1940acd5-90ed-46a2-a2a5-efd6c209bf08
+
+	/// RAG status for OR Utilisation Rate. Green 70-85%, Amber 85-90%, Red > 90% or < 65%.
+	measure '[RAG] OR Utilisation Status' =
+			// [RAG] OR Utilisation Status
+			// Returns RAG text for OR utilisation rate.
+			// Green: 70–85% (optimal AORN throughput range)
+			// Amber: 85–90% or 65–70% (outside optimal but manageable)
+			// Red: > 90% (scheduling pressure / burnout risk) or < 65% (severe underutilisation)
+			VAR Rate = [OR Utilisation Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate), BLANK(),
+			        Rate >= 0.70 && Rate <= 0.85, "Green",
+			        Rate > 0.85 && Rate <= 0.90, "Amber",
+			        Rate >= 0.65 && Rate < 0.70, "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview\RAG Status
+		lineageTag: d8f16d19-7cb8-46f4-9210-3411eb6bd330
+
+	/// RAG status for FWA Detection Rate. Green < 2%, Amber 2-5%, Red > 5%.
+	measure '[RAG] FWA Status' =
+			// [RAG] FWA Detection Status
+			// Returns RAG text for the FWA Detection Rate.
+			// Green: < 2% (within normal audit variance)
+			// Amber: 2–5% (elevated — targeted coder review recommended)
+			// Red: > 5% (exceeds CMS audit threshold; compliance programme escalation required)
+			VAR Rate = [FWA Detection Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate), BLANK(),
+			        Rate < 0.02, "Green",
+			        Rate <= 0.05, "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview\RAG Status
+		lineageTag: de2b3a66-4fd7-4ebf-9b32-41f98afe9d92
+
+	/// RAG status for Stockout Risk Rate. Green = 0%, Amber > 0% to 2%, Red > 2%.
+	measure '[RAG] Stockout Status' =
+			// [RAG] Stockout Risk Status
+			// Returns RAG text for the supply chain stockout risk encounter rate.
+			// Green: 0% (zero stockout risk — the only acceptable steady-state)
+			// Amber: > 0% to 2% (isolated events — investigation required)
+			// Red: > 2% (systemic supply chain failure — executive escalation)
+			VAR Rate = [Stockout Risk Encounter Rate %]
+			RETURN
+			    SWITCH(
+			        TRUE(),
+			        ISBLANK(Rate), BLANK(),
+			        Rate = 0, "Green",
+			        Rate <= 0.02, "Amber",
+			        "Red"
+			    )
+		displayFolder: 00 Executive Overview\RAG Status
+		lineageTag: 3ee7657c-fe78-4bdf-b06f-9ab0b08bf863
+
+	/// YTD 30-Day Readmission Rate using triage date. Requires dimDate to be marked as Date Table (completed in this build).
+	measure '30-Day Readmission Rate % YTD' =
+			// [TI] 30-Day Readmission Rate % YTD
+			// Year-to-date readmission rate calculated using the active triage_date_sk relationship.
+			// DATESYTD uses the date_key column of the now-marked Date Table (dimDate).
+			// Prerequisite: dimDate (gold vw_dim_encounter_date) must be marked as Date Table.
+			// This was completed as part of the same build that created this measure.
+			// Use this measure in trend line charts to show cumulative YTD performance vs. prior year YTD.
+			CALCULATE(
+			    [30-Day Readmission Rate %],
+			    DATESYTD('gold vw_dim_encounter_date'[date_key])
+			)
+		formatString: 0.0%
+		displayFolder: 01 Clinical\Time Intelligence
+		lineageTag: 6de94568-c757-4372-b287-93feba7ce036
+
+	/// YTD Average LOS using triage date. Requires dimDate marked as Date Table.
+	measure 'Avg LOS YTD' =
+			// [TI] Avg LOS YTD
+			// Year-to-date average length of stay using the active triage_date_sk relationship.
+			// Accumulates from January 1 of the current year through the selected date period.
+			// Useful for monitoring LOS trend within the year vs. prior year YTD comparison.
+			CALCULATE(
+			    [Avg Length of Stay (Days)],
+			    DATESYTD('gold vw_dim_encounter_date'[date_key])
+			)
+		formatString: 0.0
+		displayFolder: 01 Clinical\Time Intelligence
+		lineageTag: 4fc44091-116f-4b56-9e3f-a92e91ba3b84
+
+	/// YTD FWA Detection Rate using triage date. Tracks cumulative billing integrity across the year.
+	measure 'FWA Detection Rate % YTD' =
+			// [TI] FWA Detection Rate % YTD
+			// Year-to-date FWA detection rate using the active triage_date_sk relationship.
+			// Monitors cumulative billing integrity performance from year start to selected period.
+			// Rising YTD rate signals systemic billing issues rather than isolated incidents.
+			CALCULATE(
+			    [FWA Detection Rate %],
+			    DATESYTD('gold vw_dim_encounter_date'[date_key])
+			)
+		formatString: 0.0%
+		displayFolder: 03 Financial & Revenue Cycle\Time Intelligence
+		lineageTag: d950a778-a34d-4995-9e3e-08f6dc15ea6d
+
+	/// Avg LOS analysed by discharge date using USERELATIONSHIP on the inactive relationship. Enables discharge-cohort analysis.
+	measure 'Avg LOS by Discharge Date' =
+			// [TI] Avg LOS by Discharge Date
+			// Average Length of Stay filtered using the INACTIVE discharge_date_sk → date_sk relationship.
+			// USERELATIONSHIP activates this relationship for this measure only, without affecting others.
+			// Use this measure when the business question is:
+			//   'For patients DISCHARGED in period X, what was their average LOS?'
+			// Contrast with [Avg Length of Stay (Days)] which filters on triage/admission date.
+			// Essential for discharge cohort analysis, readmission follow-up tracking, and DRG billing reconciliation.
+			CALCULATE(
+			    [Avg Length of Stay (Days)],
+			    USERELATIONSHIP(
+			        'gold vw_fact_encounter'[discharge_date_sk],
+			        'gold vw_dim_encounter_date'[date_sk]
+			    )
+			)
+		formatString: 0.0
+		displayFolder: 01 Clinical\Time Intelligence
+		lineageTag: 69a9f128-aa23-4a03-9613-79b69d2d908d
+
+	partition _Measures = m
+		mode: import
+		source =
+				let
+				    Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i44FAA==", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Column1 = _t]),
+				    #"Changed Type" = Table.TransformColumnTypes(Source,{{"Column1", type text}}),
+				    #"Removed Columns" = Table.RemoveColumns(#"Changed Type",{"Column1"})
+				in
+				    #"Removed Columns"
+
+	annotation PBI_ResultType = Table
+

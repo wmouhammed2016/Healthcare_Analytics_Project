@@ -1,0 +1,52 @@
+table 'gold vw_dim_safety_incident'
+	lineageTag: 33558bf2-8094-4b0c-957c-76935eebbcf9
+
+	column incident_type
+		dataType: string
+		lineageTag: 02c0e217-eea3-4ce5-8cfc-417920f6d98e
+		summarizeBy: none
+		sourceColumn: incident_type
+
+		annotation SummarizationSetBy = Automatic
+
+	column incident_severity
+		dataType: string
+		lineageTag: ceecadab-124d-4d6f-82ff-94dbe327ca9d
+		summarizeBy: none
+		sourceColumn: incident_severity
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_hac_eligible
+		dataType: int64
+		formatString: 0
+		lineageTag: dd9b8a07-19f5-4509-ba67-ef096ebc71f0
+		summarizeBy: none
+		sourceColumn: is_hac_eligible
+
+		annotation SummarizationSetBy = Automatic
+
+	column incident_sk
+		dataType: int64
+		isKey
+		formatString: 0
+		lineageTag: 9ed62431-ba3f-4ba4-9b14-b78d4a534e39
+		summarizeBy: none
+		sourceColumn: incident_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_safety_incident' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_safety_incident = HCWarehouse_N2{[Schema="gold",Item="vw_dim_safety_incident"]}[Data]
+				in
+				    gold_vw_dim_safety_incident
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

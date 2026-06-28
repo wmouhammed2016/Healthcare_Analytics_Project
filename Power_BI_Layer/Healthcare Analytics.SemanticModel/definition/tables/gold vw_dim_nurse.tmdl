@@ -1,0 +1,70 @@
+table 'gold vw_dim_nurse'
+	lineageTag: c6af7c47-101f-474d-b238-eee59c9ba864
+
+	column nurse_emp_id
+		dataType: string
+		isKey
+		lineageTag: c5c36962-49b5-49a0-a2a7-0de0eebbf361
+		summarizeBy: none
+		sourceColumn: nurse_emp_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column nurse_role
+		dataType: string
+		lineageTag: de5f0998-2614-4bc9-932b-dd30a355528c
+		summarizeBy: none
+		sourceColumn: nurse_role
+
+		annotation SummarizationSetBy = Automatic
+
+	column nurse_unit
+		dataType: string
+		lineageTag: c1871f84-4224-4cc4-89f8-3a65fe6bdb6e
+		summarizeBy: none
+		sourceColumn: nurse_unit
+
+		annotation SummarizationSetBy = Automatic
+
+	column experience_tier
+		dataType: string
+		lineageTag: a221bfe6-7fc8-453a-9f0f-8de09f96e02e
+		summarizeBy: none
+		sourceColumn: experience_tier
+
+		annotation SummarizationSetBy = Automatic
+
+	column nurse_fte
+		dataType: double
+		lineageTag: 067dbd28-66d1-4113-b161-f7b49731937b
+		summarizeBy: none
+		sourceColumn: nurse_fte
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column nurse_tenure_years
+		dataType: double
+		lineageTag: 94e1e5fe-f727-420f-9222-60d2c7e728a0
+		summarizeBy: none
+		sourceColumn: nurse_tenure_years
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	partition 'gold vw_dim_nurse' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_nurse = HCWarehouse_N2{[Schema="gold",Item="vw_dim_nurse"]}[Data]
+				in
+				    gold_vw_dim_nurse
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

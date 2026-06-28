@@ -1,0 +1,2212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Healthcare Business Process Workflow — Patient Encounter Lifecycle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ─── TOKENS ─────────────────────────────────────────────── */
+  :root {
+    --white:       #FFFFFF;
+    --surface:     #F8FAFC;
+    --border:      #E2E8F0;
+    --border-dark: #CBD5E1;
+    --text-primary:#0F172A;
+    --text-secondary:#475569;
+    --text-muted:  #94A3B8;
+
+    --blue:        #2563EB;
+    --blue-light:  #EFF6FF;
+    --blue-mid:    #BFDBFE;
+
+    --green:       #059669;
+    --green-light: #ECFDF5;
+    --green-mid:   #A7F3D0;
+
+    --amber:       #D97706;
+    --amber-light: #FFFBEB;
+    --amber-mid:   #FDE68A;
+
+    --rose:        #E11D48;
+    --rose-light:  #FFF1F2;
+    --rose-mid:    #FECDD3;
+
+    --violet:      #7C3AED;
+    --violet-light:#F5F3FF;
+    --violet-mid:  #DDD6FE;
+
+    --teal:        #0D9488;
+    --teal-light:  #F0FDFA;
+    --teal-mid:    #99F6E4;
+
+    --slate:       #475569;
+    --slate-light: #F1F5F9;
+
+    --timeline-w:  4px;
+    --node-r:      20px;
+    --card-radius: 14px;
+  }
+
+  /* ─── RESET ──────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--white);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* ─── HERO ───────────────────────────────────────────────── */
+  .hero {
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 56px 48px 40px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 32px;
+  }
+  .hero-left { max-width: 640px; }
+  .hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 10px;
+  }
+  .hero h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 32px;
+    line-height: 1.2;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .hero p {
+    font-size: 14px;
+    color: var(--text-secondary);
+    max-width: 520px;
+  }
+  .hero-stats {
+    display: flex;
+    gap: 32px;
+    flex-shrink: 0;
+  }
+  .stat { text-align: right; }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px;
+    color: var(--blue);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+  }
+
+  /* ─── STICKY PHASE BAR ───────────────────────────────────── */
+  .phase-tracker {
+    position: sticky;
+    top: 153px;
+    z-index: 90;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 48px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .phase-tracker::-webkit-scrollbar { display: none; }
+  .pt-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 14px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: all .2s;
+    text-decoration: none;
+  }
+  .pt-item:hover { color: var(--text-primary); border-bottom-color: var(--border-dark); }
+  .pt-item.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+  .pt-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+  }
+
+  /* ─── MAIN LAYOUT ─────────────────────────────────────────── */
+  .main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── LEFT NAV ────────────────────────────────────────────── */
+  .sidenav {
+    border-right: 1px solid var(--border);
+    padding: 32px 24px;
+    position: sticky;
+    top: 200px;
+    height: fit-content;
+    align-self: start;
+  }
+  .sidenav-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .sidenav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 2px;
+    transition: background .15s;
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+  }
+  .sidenav-item:hover { background: var(--surface); color: var(--text-primary); }
+  .sidenav-item.active { background: var(--blue-light); color: var(--blue); font-weight: 600; }
+  .sidenav-node {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .legend-section { margin-top: 32px; }
+  .legend-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: var(--text-secondary);
+    margin-bottom: 6px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ─── CONTENT AREA ────────────────────────────────────────── */
+  .content {
+    padding: 40px 48px 80px;
+  }
+
+  /* ─── PHASE CARD ──────────────────────────────────────────── */
+  .phase-card {
+    margin-bottom: 40px;
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    transition: box-shadow .2s;
+    scroll-margin-top: 220px;
+  }
+  .phase-card:hover { box-shadow: 0 4px 24px rgba(0,0,0,.07); }
+
+  .phase-header {
+    padding: 24px 28px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    cursor: pointer;
+    gap: 16px;
+    user-select: none;
+  }
+  .phase-header-left { display: flex; align-items: flex-start; gap: 16px; }
+  .phase-number {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'DM Serif Display', serif;
+    font-size: 18px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .phase-title-block h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 20px;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .phase-meta {
+    display: flex; gap: 8px; flex-wrap: wrap;
+  }
+  .pillar-tag {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .pillar-clinical    { background: var(--green-light);  color: var(--green); }
+  .pillar-operational { background: var(--blue-light);   color: var(--blue); }
+  .pillar-financial   { background: var(--amber-light);  color: var(--amber); }
+  .pillar-hr          { background: var(--violet-light); color: var(--violet); }
+  .pillar-supply      { background: var(--teal-light);   color: var(--teal); }
+
+  .phase-toggle {
+    font-size: 20px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    transition: transform .2s;
+    margin-top: 8px;
+  }
+  .phase-toggle.open { transform: rotate(180deg); }
+
+  .phase-body {
+    display: none;
+    border-top: 1px solid var(--border);
+  }
+  .phase-body.open { display: block; }
+
+  /* ─── TABS ────────────────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 12px 16px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); font-weight: 600; }
+
+  .tab-panel { display: none; padding: 24px 28px; }
+  .tab-panel.active { display: block; }
+
+  /* ─── OVERVIEW ────────────────────────────────────────────── */
+  .overview-text {
+    font-size: 14px; line-height: 1.8;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    max-width: 720px;
+  }
+  .overview-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-top: 16px;
+  }
+  .overview-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .overview-card-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 6px;
+  }
+  .overview-card-value {
+    font-size: 13px; color: var(--text-primary); font-weight: 500;
+  }
+
+  /* ─── STAKEHOLDERS ────────────────────────────────────────── */
+  .stakeholders-grid {
+    display: flex; gap: 12px; flex-wrap: wrap;
+  }
+  .stakeholder-chip {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: 30px;
+    padding: 6px 14px 6px 8px;
+    font-size: 12px;
+  }
+  .stakeholder-icon {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .stakeholder-role {
+    font-size: 10px; color: var(--text-muted);
+  }
+
+  /* ─── DATA COLUMNS ────────────────────────────────────────── */
+  .data-section-title {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: 10px; margin-top: 20px;
+  }
+  .data-section-title:first-child { margin-top: 0; }
+  .columns-grid {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;
+  }
+  .col-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px;
+    border-radius: 6px;
+    cursor: default;
+  }
+  .col-clinical    { background: var(--green-light);  color: var(--green); }
+  .col-operational { background: var(--blue-light);   color: var(--blue); }
+  .col-financial   { background: var(--amber-light);  color: var(--amber); }
+  .col-hr          { background: var(--violet-light); color: var(--violet); }
+  .col-supply      { background: var(--teal-light);   color: var(--teal); }
+  .col-quality     { background: var(--rose-light);   color: var(--rose); }
+
+  /* ─── STANDARDS ───────────────────────────────────────────── */
+  .standards-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;
+  }
+  .standard-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border-left: 3px solid;
+  }
+  .standard-card h4 {
+    font-size: 12px; font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .standard-card p {
+    font-size: 12px; color: var(--text-secondary); line-height: 1.6;
+  }
+  .std-fhir    { border-left-color: #2563EB; }
+  .std-icd     { border-left-color: #059669; }
+  .std-cpt     { border-left-color: #D97706; }
+  .std-hipaa   { border-left-color: #7C3AED; }
+  .std-hedis   { border-left-color: #0D9488; }
+  .std-cahps   { border-left-color: #E11D48; }
+  .std-iso     { border-left-color: #0F172A; }
+  .std-jci     { border-left-color: #92400E; }
+  .std-himss   { border-left-color: #1E40AF; }
+  .std-loinc   { border-left-color: #065F46; }
+  .std-rxnorm  { border-left-color: #6D28D9; }
+  .std-drg     { border-left-color: #B45309; }
+  .std-cms     { border-left-color: #DC2626; }
+
+  /* ─── FINANCIALS ──────────────────────────────────────────── */
+  .fin-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+  }
+  .fin-block {
+    border-radius: 10px; padding: 16px;
+  }
+  .fin-block-inflow  { background: var(--green-light); border: 1px solid var(--green-mid); }
+  .fin-block-outflow { background: var(--rose-light);  border: 1px solid var(--rose-mid); }
+  .fin-block-neutral { background: var(--amber-light); border: 1px solid var(--amber-mid); }
+  .fin-block h4 {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .fin-block-inflow h4  { color: var(--green); }
+  .fin-block-outflow h4 { color: var(--rose); }
+  .fin-block-neutral h4 { color: var(--amber); }
+  .fin-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 12px; color: var(--text-primary);
+    margin-bottom: 8px; line-height: 1.5;
+  }
+  .fin-arrow { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+  .fin-formula {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: rgba(0,0,0,.05);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin-top: 10px;
+    color: var(--text-secondary);
+    word-break: break-all;
+    line-height: 1.7;
+  }
+
+  /* ─── KPIS ────────────────────────────────────────────────── */
+  .kpi-table {
+    width: 100%; border-collapse: collapse;
+    font-size: 12px;
+  }
+  .kpi-table th {
+    text-align: left;
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .kpi-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .kpi-table tr:last-child td { border-bottom: none; }
+  .kpi-table tr:hover td { background: var(--surface); }
+  .kpi-name { font-weight: 600; color: var(--text-primary); font-size: 12px; }
+  .kpi-col  { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+  .kpi-dir  {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .dir-up   { background: var(--green-light); color: var(--green); }
+  .dir-down { background: var(--rose-light);  color: var(--rose); }
+  .benchmark-badge {
+    display: inline-block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    color: var(--text-primary);
+  }
+  .kpi-notes { color: var(--text-secondary); font-size: 11px; }
+
+  /* ─── CROSS-DOMAIN CALLOUT ────────────────────────────────── */
+  .correlation-box {
+    background: linear-gradient(135deg, #EFF6FF 0%, #F5F3FF 100%);
+    border: 1px solid #C7D7FE;
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-top: 20px;
+  }
+  .correlation-box h4 {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--blue); margin-bottom: 8px;
+  }
+  .correlation-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; margin-bottom: 6px;
+    flex-wrap: wrap;
+  }
+  .corr-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; padding: 2px 7px;
+    border-radius: 4px; font-weight: 500;
+  }
+  .corr-arrow { color: var(--text-muted); font-size: 14px; }
+  .corr-effect { font-size: 11px; color: var(--text-secondary); }
+
+  /* ─── DIVIDER ─────────────────────────────────────────────── */
+  .phase-connector {
+    display: flex; align-items: center; justify-content: center;
+    padding: 8px 0; gap: 8px;
+    color: var(--text-muted); font-size: 11px;
+  }
+  .connector-line { flex: 1; height: 1px; background: var(--border); max-width: 80px; }
+
+  /* ─── RESPONSIVE ──────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .main { grid-template-columns: 1fr; }
+    .sidenav { display: none; }
+    .hero { flex-direction: column; padding: 32px 24px 24px; position: relative; top: auto; }
+    .phase-tracker { top: 0; padding: 0 24px; }
+    .content { padding: 24px 24px 60px; }
+    .fin-grid { grid-template-columns: 1fr; }
+    .overview-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 640px) {
+    .hero h1 { font-size: 24px; }
+    .hero-stats { gap: 20px; }
+  }
+
+  /* ─── PRINT / TRANSITIONS ─────────────────────────────────── */
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── HERO ─────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">Healthcare Management Analytics Platform · Business Architecture</div>
+    <h1>Patient Encounter Lifecycle<br>Business Process Workflow</h1>
+    <p>A complete phase-by-phase map of the hospital encounter — from pre-registration to 30-day readmission — cross-referenced with data columns, regulatory standards, financial flows, and performance benchmarks.</p>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">9</div><div class="stat-label">Phases</div></div>
+    <div class="stat"><div class="stat-num">92</div><div class="stat-label">Columns</div></div>
+    <div class="stat"><div class="stat-num">5</div><div class="stat-label">Domains</div></div>
+    <div class="stat"><div class="stat-num">13+</div><div class="stat-label">Standards</div></div>
+  </div>
+</header>
+
+<!-- ─── PHASE TRACKER BAR ─────────────────────────────────────── -->
+<nav class="phase-tracker" id="phaseTracker">
+  <a class="pt-item" href="#phase1"><span class="pt-dot"></span>Pre-Registration</a>
+  <a class="pt-item" href="#phase2"><span class="pt-dot"></span>Registration & Admission</a>
+  <a class="pt-item" href="#phase3"><span class="pt-dot"></span>Triage & Assessment</a>
+  <a class="pt-item" href="#phase4"><span class="pt-dot"></span>Diagnosis & Documentation</a>
+  <a class="pt-item" href="#phase5"><span class="pt-dot"></span>Treatment & OR</a>
+  <a class="pt-item" href="#phase6"><span class="pt-dot"></span>Inpatient Monitoring</a>
+  <a class="pt-item" href="#phase7"><span class="pt-dot"></span>Discharge & Coding</a>
+  <a class="pt-item" href="#phase8"><span class="pt-dot"></span>Claims & Revenue Cycle</a>
+  <a class="pt-item" href="#phase9"><span class="pt-dot"></span>Follow-Up & Readmission</a>
+</nav>
+
+<div class="main">
+
+<!-- ─── SIDE NAV ──────────────────────────────────────────────── -->
+<aside class="sidenav">
+  <div class="sidenav-label">Phases</div>
+
+  <a class="sidenav-item" href="#phase1">
+    <span class="sidenav-node" style="background:#EFF6FF;color:#2563EB;">1</span>Pre-Registration
+  </a>
+  <a class="sidenav-item" href="#phase2">
+    <span class="sidenav-node" style="background:#EFF6FF;color:#2563EB;">2</span>Registration & Admission
+  </a>
+  <a class="sidenav-item" href="#phase3">
+    <span class="sidenav-node" style="background:#ECFDF5;color:#059669;">3</span>Triage & Assessment
+  </a>
+  <a class="sidenav-item" href="#phase4">
+    <span class="sidenav-node" style="background:#ECFDF5;color:#059669;">4</span>Diagnosis & Documentation
+  </a>
+  <a class="sidenav-item" href="#phase5">
+    <span class="sidenav-node" style="background:#ECFDF5;color:#059669;">5</span>Treatment & OR
+  </a>
+  <a class="sidenav-item" href="#phase6">
+    <span class="sidenav-node" style="background:#F5F3FF;color:#7C3AED;">6</span>Inpatient Monitoring
+  </a>
+  <a class="sidenav-item" href="#phase7">
+    <span class="sidenav-node" style="background:#FFFBEB;color:#D97706;">7</span>Discharge & Coding
+  </a>
+  <a class="sidenav-item" href="#phase8">
+    <span class="sidenav-node" style="background:#FFFBEB;color:#D97706;">8</span>Claims & Revenue Cycle
+  </a>
+  <a class="sidenav-item" href="#phase9">
+    <span class="sidenav-node" style="background:#FFF1F2;color:#E11D48;">9</span>Follow-Up & Readmission
+  </a>
+
+  <div class="legend-section">
+    <div class="sidenav-label">Domain Key</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#059669;"></span>Clinical</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#2563EB;"></span>Operational</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#D97706;"></span>Financial</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#7C3AED;"></span>Human Resources</div>
+    <div class="legend-item"><span class="legend-dot" style="background:#0D9488;"></span>Supply Chain</div>
+  </div>
+</aside>
+
+<!-- ─── CONTENT ───────────────────────────────────────────────── -->
+<main class="content">
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 1 — PRE-REGISTRATION & SCHEDULING
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase1">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#EFF6FF;color:#2563EB;">1</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Pre-Registration & Scheduling</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p1','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p1','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p1','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p1','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p1','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p1','kpis')">KPIs</div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="tab-panel active" id="p1-overview">
+      <p class="overview-text">Before a patient steps foot in the hospital, a scheduling event creates the first data record. The appointment is booked — elective surgery, outpatient consultation, or a referral — and basic demographics are pre-verified against the insurer. This phase determines patient flow forecasting and OR block-time allocation.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Entry Trigger</div><div class="overview-card-value">Physician referral, self-referral, or emergency transfer request</div></div>
+        <div class="overview-card"><div class="overview-card-label">Primary Output</div><div class="overview-card-value">Scheduled appointment slot, pre-authorization request sent to payer</div></div>
+        <div class="overview-card"><div class="overview-card-label">System Used</div><div class="overview-card-value">EHR Scheduling Module, Prior Authorization Portal, ADT System</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resource Created</div><div class="overview-card-value">Appointment, Patient (stub), Organization, Practitioner</div></div>
+      </div>
+    </div>
+
+    <!-- STAKEHOLDERS -->
+    <div class="tab-panel" id="p1-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🧑‍⚕️</span><div><div style="font-size:12px;font-weight:600;">Referring Physician</div><div class="stakeholder-role">Generates referral order</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">📋</span><div><div style="font-size:12px;font-weight:600;">Scheduling Coordinator</div><div class="stakeholder-role">Books appointment slot</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Provides demographics, consent</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">💳</span><div><div style="font-size:12px;font-weight:600;">Payer / Insurer</div><div class="stakeholder-role">Pre-authorization decision</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">🔧</span><div><div style="font-size:12px;font-weight:600;">OR Block Scheduler</div><div class="stakeholder-role">Allocates OR time block</div></div></div>
+      </div>
+    </div>
+
+    <!-- DATA -->
+    <div class="tab-panel" id="p1-data">
+      <div class="data-section-title">Patient Demographics — First Captured</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">patient_id</span>
+        <span class="col-chip col-clinical">birth_year</span>
+        <span class="col-chip col-clinical">age</span>
+        <span class="col-chip col-clinical">sex</span>
+        <span class="col-chip col-clinical">race_ethnicity</span>
+        <span class="col-chip col-clinical">state</span>
+      </div>
+      <div class="data-section-title">Operational — Appointment Metadata</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">encounter_id</span>
+        <span class="col-chip col-operational">cpt_code</span>
+        <span class="col-chip col-operational">procedure_display</span>
+        <span class="col-chip col-operational">unit_assigned</span>
+      </div>
+      <div class="data-section-title">Financial — Pre-Auth</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">payer</span>
+        <span class="col-chip col-financial">npi_billing</span>
+      </div>
+      <div class="data-section-title">HR — Resource Allocation</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">surgeon_emp_id</span>
+        <span class="col-chip col-hr">surgeon_specialty</span>
+      </div>
+    </div>
+
+    <!-- STANDARDS -->
+    <div class="tab-panel" id="p1-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Appointment Resource</h4><p>Appointment.start, Appointment.end, Appointment.serviceType, Appointment.status (booked/cancelled). The encounter_id stub is created here as Encounter.id in planned status.</p></div>
+        <div class="standard-card std-hipaa"><h4>HIPAA — Safe Harbor (§164.514)</h4><p>18 identifiers suppressed on first capture: patient_id replaces MRN; state-level geography only; birth_year replaces full DOB; age capped at 95.</p></div>
+        <div class="standard-card std-cpt"><h4>CPT / HCPCS</h4><p>Procedure type (cpt_code) is captured at scheduling to enable OR block allocation and surgical kit pre-staging by Supply Chain.</p></div>
+        <div class="standard-card std-cms"><h4>CMS — Prior Authorization</h4><p>Elective procedures require pre-authorization from Medicare/Medicaid payers. Payer approval status is a financial gate before the encounter proceeds.</p></div>
+      </div>
+    </div>
+
+    <!-- FINANCIALS -->
+    <div class="tab-panel" id="p1-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Costs Incurred</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Scheduling staff labor cost (administrative FTE hours)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>EHR system licensing per transaction</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Prior authorization processing cost (~$11–$17 per request)</span></div>
+        </div>
+        <div class="fin-block fin-block-neutral">
+          <h4>⚠️ Financial Risk</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>No-show or late cancellation: OR block time wasted ($2,000–$5,000/hr)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Payer denial of pre-auth → encounter deferred → revenue delayed</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Incorrect payer captured → claim denial downstream</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIS -->
+    <div class="tab-panel" id="p1-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">Appointment Lead Time</div></td>
+            <td><div class="kpi-col">triage_timestamp (proxy)</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 7 days urgent / &lt; 21 days routine</span></td>
+            <td class="kpi-notes">HEDIS Access to Care measure; long lead times signal capacity constraints</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">No-Show / Cancellation Rate</div></td>
+            <td><div class="kpi-col">—</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 10%</span></td>
+            <td class="kpi-notes">Each no-show on OR schedule costs estimated 1–2 hrs wasted block time</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Pre-Authorization Approval Rate</div></td>
+            <td><div class="kpi-col">payer</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">&gt; 90%</span></td>
+            <td class="kpi-notes">Low rate signals coding/documentation quality issues at referral stage</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">OR Block Utilization (pre-schedule)</div></td>
+            <td><div class="kpi-col">actual_or_minutes</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">70–85%</span></td>
+            <td class="kpi-notes">Unused OR time is the highest unit cost waste in the facility</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase1 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 2 — REGISTRATION & ADMISSION
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase2">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#EFF6FF;color:#2563EB;">2</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Registration & Admission</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p2','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p2','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p2','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p2','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p2','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p2','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p2-overview">
+      <p class="overview-text">The patient arrives and is formally entered into the hospital's ADT system. A unique encounter ID is activated, the FHIR Encounter resource transitions to "in-progress," and the patient receives a wristband. Admissions staff verify insurance, collect consent forms, and establish the patient's financial responsibility. This phase is the billing genesis — the moment all downstream revenue tracking begins.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Entry Trigger</div><div class="overview-card-value">Patient physical arrival (planned) or ED walk-in/ambulance</div></div>
+        <div class="overview-card"><div class="overview-card-label">Primary Output</div><div class="overview-card-value">Active encounter record, bed request raised, wristband issued</div></div>
+        <div class="overview-card"><div class="overview-card-label">System Used</div><div class="overview-card-value">ADT System, EHR Registration Module, Bed Management System</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resource Updated</div><div class="overview-card-value">Encounter (status: in-progress), Patient (verified), Coverage</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p2-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Arrives, signs consent forms</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">📋</span><div><div style="font-size:12px;font-weight:600;">Admissions Clerk</div><div class="stakeholder-role">Registers in EHR, verifies insurance</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">💳</span><div><div style="font-size:12px;font-weight:600;">Payer / Insurer</div><div class="stakeholder-role">Coverage eligibility verification</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">🛏️</span><div><div style="font-size:12px;font-weight:600;">Bed Manager</div><div class="stakeholder-role">Assigns unit and bed</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">💊</span><div><div style="font-size:12px;font-weight:600;">Pharmacy</div><div class="stakeholder-role">Medication reconciliation begins</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p2-data">
+      <div class="data-section-title">Operational — Bed & Timing</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">triage_timestamp</span>
+        <span class="col-chip col-operational">admit_timestamp</span>
+        <span class="col-chip col-operational">bed_request_time</span>
+        <span class="col-chip col-operational">bed_assign_time</span>
+        <span class="col-chip col-operational">unit_assigned</span>
+        <span class="col-chip col-operational">bed_occupancy_pct</span>
+      </div>
+      <div class="data-section-title">Financial — Payer & Claim Setup</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">claim_id</span>
+        <span class="col-chip col-financial">payer</span>
+        <span class="col-chip col-financial">npi_billing</span>
+        <span class="col-chip col-financial">patient_responsibility_usd</span>
+      </div>
+      <div class="data-section-title">Clinical — Demographics Confirmed</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">patient_id</span>
+        <span class="col-chip col-clinical">birth_year</span>
+        <span class="col-chip col-clinical">age</span>
+        <span class="col-chip col-clinical">sex</span>
+        <span class="col-chip col-clinical">race_ethnicity</span>
+        <span class="col-chip col-clinical">state</span>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p2-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Encounter Resource</h4><p>Encounter.status transitions to "in-progress." Encounter.class (inpatient/outpatient), Encounter.period.start = admit_timestamp. Patient and Coverage resources linked.</p></div>
+        <div class="standard-card std-hipaa"><h4>HIPAA — PHI Protection</h4><p>Full patient record created; ePHI protections apply. Security Rule requirements for access controls and audit logging activate. Breach Notification Rule also now in effect.</p></div>
+        <div class="standard-card std-jci"><h4>JCI 8th Ed — IPSG Goal 1</h4><p>International Patient Safety Goal 1: Correct Patient Identification. Two patient identifiers (patient_id + birth_year) must be confirmed before any care is initiated. Wristband issued.</p></div>
+        <div class="standard-card std-cms"><h4>CMS — Conditions of Participation</h4><p>Medicare/Medicaid CoPs require written informed consent, documentation of patient rights, and advance directive inquiry to be completed at admission.</p></div>
+        <div class="standard-card std-himss"><h4>HIMSS EMRAM Stage 3+</h4><p>Computerized physician order entry (CPOE) and basic clinical documentation must be in place. ADT feed integration is a prerequisite for Stage 3 compliance.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p2-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Initiated</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Facility fee charge begins accruing from admit_timestamp</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Patient co-pay / co-insurance collected at registration</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Per-diem inpatient bed charge starts (typically $1,500–$3,000/day)</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Costs Incurred</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Admissions staff labor (per-hour FTE)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Bed preparation and housekeeping cost</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Real-time insurance eligibility verification fee (~$0.50–$2.00)</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">patient_responsibility_usd = allowed_amount_usd × deductible_rate + copay_amount<br>Facility per-diem revenue begins accruing from: admit_timestamp</div>
+    </div>
+
+    <div class="tab-panel" id="p2-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">Bed Wait Time</div></td>
+            <td><div class="kpi-col">bed_assign_time − bed_request_time</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 60 min</span></td>
+            <td class="kpi-notes">Extended waits cause ER boarding and LWBS increases</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Bed Occupancy Rate</div></td>
+            <td><div class="kpi-col">bed_occupancy_pct</div></td>
+            <td><span class="kpi-dir dir-up">↑ Target Range</span></td>
+            <td><span class="benchmark-badge">75–85%</span></td>
+            <td class="kpi-notes">Above 90% = patient safety risk; below 70% = under-utilization</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Insurance Verification Accuracy</div></td>
+            <td><div class="kpi-col">payer, claim_id</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">&gt; 98%</span></td>
+            <td class="kpi-notes">Errors here cascade into claim denials; #1 root cause of CO-16 denials</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Registration to Admit Time</div></td>
+            <td><div class="kpi-col">admit_timestamp − triage_timestamp</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 30 min</span></td>
+            <td class="kpi-notes">Drives patient experience (CAHPS) scores and ER throughput</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase2 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 3 — TRIAGE & INITIAL CLINICAL ASSESSMENT
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase3">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#ECFDF5;color:#059669;">3</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Triage & Initial Clinical Assessment</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-hr">Human Resources</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p3','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p3','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p3','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p3','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p3','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p3','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p3-overview">
+      <p class="overview-text">A triage nurse performs the first rapid clinical assessment. Vital signs are measured and recorded, acuity is scored using the Emergency Severity Index (ESI), and the severity_index is assigned — the single most consequential value in the dataset, as it propagates correlations into LOS, charges, OR time, and readmission risk. The door-to-doctor clock starts here.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Primary Clinical Act</div><div class="overview-card-value">Vital signs capture, pain assessment, ESI triage scoring</div></div>
+        <div class="overview-card"><div class="overview-card-label">Key Data Output</div><div class="overview-card-value">severity_index (0–1), all vital sign columns, triage_timestamp</div></div>
+        <div class="overview-card"><div class="overview-card-label">Cross-Domain Impact</div><div class="overview-card-value">severity_index drives LOS, OR time, submitted_charge, readmission_30d_flag</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resources</div><div class="overview-card-value">Observation (vitals), Condition (presenting complaint), Encounter (updated)</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p3-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">👩‍⚕️</span><div><div style="font-size:12px;font-weight:600;">Triage Nurse (RN)</div><div class="stakeholder-role">Records vitals, assigns ESI level</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Reports symptoms, medical history</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🩺</span><div><div style="font-size:12px;font-weight:600;">Emergency Physician</div><div class="stakeholder-role">Receives triage report, initiates assessment</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">🔧</span><div><div style="font-size:12px;font-weight:600;">Charge Nurse</div><div class="stakeholder-role">Coordinates unit capacity</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p3-data">
+      <div class="data-section-title">Clinical — Vital Signs (LOINC Coded)</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">sbp_mmhg</span>
+        <span class="col-chip col-clinical">dbp_mmhg</span>
+        <span class="col-chip col-clinical">heart_rate_bpm</span>
+        <span class="col-chip col-clinical">spo2_pct</span>
+        <span class="col-chip col-clinical">temperature_f</span>
+        <span class="col-chip col-clinical">respiratory_rate</span>
+        <span class="col-chip col-clinical">bmi</span>
+      </div>
+      <div class="data-section-title">Clinical — Acuity & Risk Scoring</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">severity_index</span>
+        <span class="col-chip col-clinical">comorbidity_count</span>
+        <span class="col-chip col-clinical">has_diabetes</span>
+        <span class="col-chip col-clinical">has_hypertension</span>
+        <span class="col-chip col-clinical">has_chf</span>
+      </div>
+      <div class="data-section-title">Operational — Timestamps</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">triage_timestamp</span>
+      </div>
+      <div class="data-section-title">HR — Nurse Assignment</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">nurse_emp_id</span>
+        <span class="col-chip col-hr">nurse_role</span>
+        <span class="col-chip col-hr">nurse_unit</span>
+        <span class="col-chip col-hr">patients_per_nurse_ratio</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ Cross-Domain Correlations Activated at Triage</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">severity_index ↑</span><span class="corr-arrow">→</span><span class="corr-effect">los_days ↑, actual_or_minutes ↑, submitted_charge_usd ↑, readmission_30d_flag probability ↑</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">has_diabetes = 1</span><span class="corr-arrow">→</span><span class="corr-effect">hba1c_pct elevated (mean 8.2%), glucose_mg_dl elevated, bmi elevated</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">has_chf = 1</span><span class="corr-arrow">→</span><span class="corr-effect">nt_probnp_pg_ml dramatically elevated (~1,800 pg/mL vs normal &lt;125)</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">has_hypertension = 1</span><span class="corr-arrow">→</span><span class="corr-effect">sbp_mmhg elevated (mean shifted upward), Lisinopril in medication record</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p3-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Observation Resource</h4><p>Each vital sign is an Observation with Observation.code (LOINC), Observation.value, Observation.status, and Observation.category = "vital-signs."</p></div>
+        <div class="standard-card std-loinc"><h4>LOINC Codes — Vital Signs</h4><p>sbp_mmhg → LOINC 8480-6; spo2_pct → LOINC 59408-5; heart_rate_bpm → LOINC 8867-4; temperature_f → LOINC 8310-5; respiratory_rate → LOINC 9279-1.</p></div>
+        <div class="standard-card std-jci"><h4>JCI 8th Ed — IPSG Goal 6</h4><p>Clinical risk assessment must be documented at admission. Triage severity scoring is the mechanism. JCI requires hospitals to define and use a validated triage system consistently.</p></div>
+        <div class="standard-card std-iso"><h4>ISO 7101 — PDSA Cycle Initiation</h4><p>If a safety incident occurs in a high-acuity triage scenario, the PDSA cycle (pdsa_cycle_id) is initiated here. Plan phase = identifying the quality problem.</p></div>
+        <div class="standard-card std-himss"><h4>HIMSS EMRAM Stage 6+</h4><p>Vitals must be captured electronically and flow into the clinical decision support system. Manual vital sign recording disqualifies Stage 6 compliance.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p3-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Implications</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Higher severity_index → higher DRG weight → higher Medicare base payment</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Accurate acuity documentation protects against claim downcoding by payer</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Costs Incurred</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Nurse labor: triage assessment time (20–45 min per patient)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Equipment: pulse oximeter, BP monitor, thermometer usage</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>EHR entry labor cost per vital sign observation recorded</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">drg_weight ∝ f(severity_index, comorbidity_count)<br>Higher severity_index → higher drg_weight → higher allowed_amount_usd from Medicare/payer</div>
+    </div>
+
+    <div class="tab-panel" id="p3-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">Door-to-Doctor Time</div></td>
+            <td><div class="kpi-col">admit_timestamp − triage_timestamp</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 30 min</span></td>
+            <td class="kpi-notes">JCI and CMS quality metric; directly affects LWBS rate</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Triage Accuracy Rate</div></td>
+            <td><div class="kpi-col">severity_index</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">&gt; 95%</span></td>
+            <td class="kpi-notes">Under-triaging high-acuity patients is a JCI sentinel event risk</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Comorbidity Capture Rate</div></td>
+            <td><div class="kpi-col">comorbidity_count, has_diabetes, has_hypertension, has_chf</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">&gt; 90%</span></td>
+            <td class="kpi-notes">Missed comorbidities = missed HEDIS measure denominator inclusion = lost quality credit</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Nurse-to-Patient Ratio at Triage</div></td>
+            <td><div class="kpi-col">patients_per_nurse_ratio</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">≤ 5:1 general / ≤ 2:1 ICU</span></td>
+            <td class="kpi-notes">Drives safety_incident_flag probability; California mandates 1:4 ED minimum</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">LWBS Rate</div></td>
+            <td><div class="kpi-col">triage_timestamp</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 2%</span></td>
+            <td class="kpi-notes">Left Without Being Seen; HEDIS access-to-care signal and patient safety risk</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase3 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 4 — DIAGNOSIS & CLINICAL DOCUMENTATION
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase4">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#ECFDF5;color:#059669;">4</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Diagnosis & Clinical Documentation</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p4','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p4','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p4','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p4','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p4','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p4','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p4-overview">
+      <p class="overview-text">A physician examines the patient and assigns the primary ICD-10-CM diagnosis code — the single most important clinical-financial link in the entire encounter. This triggers DRG assignment, determines HEDIS measure eligibility, and is the primary FWA risk point (upcoding occurs here). Laboratory orders are placed, LOINC-coded results flow back, and medications are reconciled and prescribed using RxNorm codes.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Primary Clinical Act</div><div class="overview-card-value">ICD-10-CM diagnosis assignment, lab orders, medication reconciliation</div></div>
+        <div class="overview-card"><div class="overview-card-label">Key Data Output</div><div class="overview-card-value">icd10_code, diagnosis_category, lab results, medication_adherence_pdc</div></div>
+        <div class="overview-card"><div class="overview-card-label">FWA Risk Point</div><div class="overview-card-value">Upcoding risk: billing higher-severity DRG than clinical documentation supports</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resources</div><div class="overview-card-value">Condition, Observation (labs), MedicationRequest, DiagnosticReport</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p4-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🩺</span><div><div style="font-size:12px;font-weight:600;">Attending Physician</div><div class="stakeholder-role">Diagnoses, writes orders</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🔬</span><div><div style="font-size:12px;font-weight:600;">Laboratory Technician</div><div class="stakeholder-role">Processes lab orders, returns LOINC results</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">💊</span><div><div style="font-size:12px;font-weight:600;">Clinical Pharmacist</div><div class="stakeholder-role">Medication reconciliation, drug interaction check</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">📝</span><div><div style="font-size:12px;font-weight:600;">Clinical Documentation Specialist</div><div class="stakeholder-role">Ensures ICD-10 coding accuracy</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">History disclosure, consent for labs/meds</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p4-data">
+      <div class="data-section-title">Clinical — Diagnosis Coding</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">icd10_code</span>
+        <span class="col-chip col-clinical">diagnosis_display</span>
+        <span class="col-chip col-clinical">diagnosis_category</span>
+      </div>
+      <div class="data-section-title">Clinical — Laboratory Results (LOINC)</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">hba1c_pct</span>
+        <span class="col-chip col-clinical">glucose_mg_dl</span>
+        <span class="col-chip col-clinical">creatinine_mg_dl</span>
+        <span class="col-chip col-clinical">wbc_10e3_ul</span>
+        <span class="col-chip col-clinical">nt_probnp_pg_ml</span>
+      </div>
+      <div class="data-section-title">Clinical — Medication (RxNorm)</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">medication_adherence_pdc</span>
+      </div>
+      <div class="data-section-title">Quality — HEDIS Flags Triggered</div>
+      <div class="columns-grid">
+        <span class="col-chip col-quality">hedis_hba1c_tested</span>
+        <span class="col-chip col-quality">hedis_hba1c_poor_control</span>
+      </div>
+      <div class="data-section-title">Financial — DRG Assignment Enabled</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">drg_weight</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ HEDIS Measure Eligibility Determined Here</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">has_diabetes = 1</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">hba1c_pct recorded</span><span class="corr-arrow">→</span><span class="corr-effect">hedis_hba1c_tested = 1 (HEDIS CDC numerator met)</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">hba1c_pct &gt; 9.0%</span><span class="corr-arrow">→</span><span class="corr-effect">hedis_hba1c_poor_control = 1 → care gap alert triggered → payer outreach initiated</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">medication_adherence_pdc</span><span class="corr-arrow">↓ with</span><span class="corr-chip col-clinical">severity_index ↑</span><span class="corr-arrow">→</span><span class="corr-effect">sicker patients adhere less; readmission risk increases</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p4-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-icd"><h4>ICD-10-CM (FY2025)</h4><p>Primary diagnosis code (icd10_code) must be the most specific code available. E.g., E11.65 not E11.9. Code specificity directly determines DRG assignment and reimbursement level.</p></div>
+        <div class="standard-card std-loinc"><h4>LOINC — Laboratory Observations</h4><p>hba1c_pct → LOINC 4548-4; glucose_mg_dl → LOINC 2345-7; creatinine → LOINC 2160-0; WBC → LOINC 6690-2; NT-proBNP → LOINC 33762-6.</p></div>
+        <div class="standard-card std-rxnorm"><h4>RxNorm — Medication Coding</h4><p>All prescribed medications use RxNorm CUI codes. Enables PDC (Proportion of Days Covered) calculation for HEDIS medication adherence measures. Metformin = RxCUI 860975.</p></div>
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Condition Resource</h4><p>Condition.code (ICD-10), Condition.clinicalStatus, Condition.verificationStatus. MedicationRequest.medication (RxNorm). DiagnosticReport groups lab Observations.</p></div>
+        <div class="standard-card std-hedis"><h4>HEDIS 2025 — CDC Measure</h4><p>Comprehensive Diabetes Care (CDC): HbA1c testing (hedis_hba1c_tested) and poor control flag (hedis_hba1c_poor_control) are HEDIS numerator/denominator elements directly generated in this phase.</p></div>
+        <div class="standard-card std-drg"><h4>DRG — Diagnosis Related Groups</h4><p>ICD-10 principal diagnosis + procedure (CPT) + comorbidity_count → DRG assignment → drg_weight → Medicare base payment rate. Higher drg_weight = higher reimbursement.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p4-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Determined Here</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>DRG weight established: drives the entire Medicare payment amount</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Lab charges: each LOINC-coded test generates a CPT billable service</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Accurate diagnosis coding = accurate reimbursement (no revenue leakage)</span></div>
+        </div>
+        <div class="fin-block fin-block-neutral">
+          <h4>⚠️ FWA Risk — Upcoding</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>fraud_upcoding_flag: ~4% base rate; inflates submitted_charge by 1.4–2.2×</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>OIG watches for: providers who bill highest E&amp;M codes 100% of the time</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>RAC audits recover overpayments; penalties up to 3× the false claim amount</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">drg_weight = f(icd10_code, cpt_code, comorbidity_count) + ε<br>Medicare_payment ≈ drg_weight × hospital_base_rate (varies by geographic region)<br>submitted_charge_usd *= 1.4–2.2 when fraud_upcoding_flag = 1</div>
+    </div>
+
+    <div class="tab-panel" id="p4-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">HbA1c Testing Rate (HEDIS CDC)</div></td>
+            <td><div class="kpi-col">hedis_hba1c_tested / has_diabetes population</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 85% diabetic patients</span></td>
+            <td class="kpi-notes">HEDIS CDC measure; low rates reduce CMS Star Rating and insurer network standing</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">HbA1c Poor Control Rate</div></td>
+            <td><div class="kpi-col">hedis_hba1c_poor_control (hba1c_pct &gt; 9%)</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 30% of diabetics</span></td>
+            <td class="kpi-notes">Lower is better; high rates trigger payer-mandated care management programs</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Medication Adherence (PDC)</div></td>
+            <td><div class="kpi-col">medication_adherence_pdc</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 0.80 (80%)</span></td>
+            <td class="kpi-notes">HEDIS Star measure for chronic conditions; PDC &lt;0.80 = non-adherent, readmission risk doubles</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">DRG Coding Accuracy</div></td>
+            <td><div class="kpi-col">icd10_code, drg_weight, fraud_upcoding_flag</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">&gt; 95%</span></td>
+            <td class="kpi-notes">Coding errors cause under-payment (lost revenue) or over-payment (FWA liability)</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Lab Result Turnaround Time</div></td>
+            <td><div class="kpi-col">hba1c_pct, glucose_mg_dl (timestamp implied)</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 60 min (STAT) / &lt; 4 hr (routine)</span></td>
+            <td class="kpi-notes">Delayed results delay treatment decisions and extend LOS</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase4 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 5 — TREATMENT & SURGICAL PROCEDURES (OR)
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase5">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#ECFDF5;color:#059669;">5</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Treatment & Surgical Procedures</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-supply">Supply Chain</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p5','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p5','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p5','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p5','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p5','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p5','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p5-overview">
+      <p class="overview-text">The patient enters the operating room for the surgical procedure. This is the highest-cost, highest-revenue phase of the encounter. Every minute of OR time has a direct financial and supply cost attached. The CPT code recorded here drives the surgical kit selection (supply chain demand), the professional fee, and the charge capture. OR efficiency metrics — turnover time, utilization rate, on-time start — are the primary operational KPIs in this phase.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Primary Clinical Act</div><div class="overview-card-value">Surgery performed, anesthesia administered, post-op recovery (PACU)</div></div>
+        <div class="overview-card"><div class="overview-card-label">Supply Chain Link</div><div class="overview-card-value">cpt_code → surgical_kit_id → kit consumed → inventory decremented</div></div>
+        <div class="overview-card"><div class="overview-card-label">Highest Revenue Phase</div><div class="overview-card-value">OR time + surgical kit + facility fee + anesthesia = largest charge component</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resources</div><div class="overview-card-value">Procedure, Location (OR room), Practitioner (surgeon), Device (implants)</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p5-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">⚕️</span><div><div style="font-size:12px;font-weight:600;">Attending Surgeon</div><div class="stakeholder-role">Performs procedure, documents OR notes</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">💉</span><div><div style="font-size:12px;font-weight:600;">Anesthesiologist</div><div class="stakeholder-role">Administers/monitors anesthesia</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">👩‍⚕️</span><div><div style="font-size:12px;font-weight:600;">Scrub / Circulating Nurse</div><div class="stakeholder-role">Instruments, sterility, documentation</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F0FDFA;">📦</span><div><div style="font-size:12px;font-weight:600;">Supply Technician</div><div class="stakeholder-role">Delivers and tracks surgical kit consumption</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">🗓️</span><div><div style="font-size:12px;font-weight:600;">OR Coordinator</div><div class="stakeholder-role">Manages case schedule, turnover logistics</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Under anesthesia; surgical consent active</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p5-data">
+      <div class="data-section-title">Operational — OR Timestamps & Metrics</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">or_start</span>
+        <span class="col-chip col-operational">or_end</span>
+        <span class="col-chip col-operational">actual_or_minutes</span>
+        <span class="col-chip col-operational">or_turnover_minutes</span>
+        <span class="col-chip col-operational">cpt_code</span>
+        <span class="col-chip col-operational">procedure_display</span>
+      </div>
+      <div class="data-section-title">Supply Chain — Kit Consumption</div>
+      <div class="columns-grid">
+        <span class="col-chip col-supply">surgical_kit_id</span>
+        <span class="col-chip col-supply">kit_name</span>
+        <span class="col-chip col-supply">kit_unit_cost_usd</span>
+        <span class="col-chip col-supply">kit_current_stock</span>
+        <span class="col-chip col-supply">kit_reorder_point</span>
+        <span class="col-chip col-supply">kit_lead_time_days</span>
+        <span class="col-chip col-supply">kit_expiration_date</span>
+        <span class="col-chip col-supply">stockout_risk_flag</span>
+        <span class="col-chip col-supply">weekly_procedure_volume</span>
+        <span class="col-chip col-supply">projected_demand_4wk</span>
+        <span class="col-chip col-supply">days_of_supply</span>
+      </div>
+      <div class="data-section-title">HR — Surgeon & OR Team</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">surgeon_emp_id</span>
+        <span class="col-chip col-hr">surgeon_specialty</span>
+        <span class="col-chip col-hr">shift_hours</span>
+        <span class="col-chip col-hr">overtime_hours</span>
+      </div>
+      <div class="data-section-title">Financial — Charge Capture Begins</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">submitted_charge_usd</span>
+        <span class="col-chip col-financial">drg_weight</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ Supply Chain Cross-Domain Correlations</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-operational">cpt_code</span><span class="corr-arrow">→</span><span class="corr-chip col-supply">surgical_kit_id</span><span class="corr-arrow">→</span><span class="corr-effect">kit_current_stock decremented; projected_demand_4wk updated</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-supply">kit_current_stock ≤ kit_reorder_point</span><span class="corr-arrow">→</span><span class="corr-chip col-supply">stockout_risk_flag = 1</span><span class="corr-arrow">→</span><span class="corr-effect">procurement alert triggered</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">severity_index ↑</span><span class="corr-arrow">→</span><span class="corr-chip col-operational">actual_or_minutes ↑</span><span class="corr-arrow">→</span><span class="corr-chip col-financial">submitted_charge_usd ↑</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p5-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-cpt"><h4>CPT / HCPCS — Procedure Coding</h4><p>Each surgical act maps to a specific CPT code. E.g., 27447 = Total Knee Arthroplasty; 47562 = Laparoscopic Cholecystectomy. CPT code determines kit selection, OR time baseline, and professional fee.</p></div>
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Procedure Resource</h4><p>Procedure.code (CPT), Procedure.performedPeriod (or_start to or_end), Procedure.performer (surgeon NPI), Procedure.usedReference (surgical kit).</p></div>
+        <div class="standard-card std-jci"><h4>JCI 8th Ed — IPSG Goal 4</h4><p>Safe Surgery Protocol: WHO Surgical Safety Checklist must be documented (Sign-In, Time-Out, Sign-Out). Correct site/procedure/patient verification before incision. Never-event prevention.</p></div>
+        <div class="standard-card std-iso"><h4>ISO 7101 — Surgical Quality</h4><p>Surgical site infection (SSI) rates are a core ISO 7101 quality metric. If SSI occurs, incident is flagged (safety_incident_flag) and PDSA cycle initiated (pdsa_cycle_id).</p></div>
+        <div class="standard-card std-himss"><h4>HIMSS EMRAM Stage 5+</h4><p>Electronic medication administration record (eMAR) in OR and CPOE for all surgical orders required. Stage 6 adds closed-loop medication verification in the OR setting.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p5-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Generated</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Surgeon professional fee (CPT-based, billed separately via npi_billing)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Facility fee: OR room time × per-minute rate (~$50–$100/min)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Anesthesia professional fee (billed per 15-min units)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Implant/device pass-through charges (e.g., joint prosthesis at cost + markup)</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Costs Incurred</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Surgical kit cost (kit_unit_cost_usd) — highest supply spend per encounter</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>OR nursing team labor (multi-staff, 8–12 hr shifts)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>OR facility overhead: sterilization, HVAC, equipment depreciation</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Inventory holding cost for surgical kit safety stock</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">submitted_charge_usd = (actual_or_minutes × or_rate_per_min) + kit_unit_cost_usd + facility_per_diem + anesthesia_units × unit_rate<br>When fraud_upcoding_flag = 1: submitted_charge_usd × [1.4, 2.2]<br>days_of_supply = kit_current_stock / (weekly_procedure_volume / 7)</div>
+    </div>
+
+    <div class="tab-panel" id="p5-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">OR Utilization Rate</div></td>
+            <td><div class="kpi-col">actual_or_minutes / scheduled_or_minutes</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">70–85%</span></td>
+            <td class="kpi-notes">Below 70% = waste; above 85% = risk of overruns and staff fatigue</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">OR Turnover Time</div></td>
+            <td><div class="kpi-col">or_turnover_minutes</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 25 min</span></td>
+            <td class="kpi-notes">Each extra minute of turnover = ~$50–$100 in lost OR capacity value</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Days of Supply (Surgical Kits)</div></td>
+            <td><div class="kpi-col">days_of_supply</div></td>
+            <td><span class="kpi-dir dir-up">↑ Target Range</span></td>
+            <td><span class="benchmark-badge">14–30 days</span></td>
+            <td class="kpi-notes">&lt;7 days = stockout risk; &gt;45 days = excess holding cost + expiration risk</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Stockout Risk Rate</div></td>
+            <td><div class="kpi-col">stockout_risk_flag</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">approaching 0%</span></td>
+            <td class="kpi-notes">Any stockout on critical surgical kit = cancelled/delayed case = $15,000–$30,000 revenue loss</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Supply Cost per Surgical Case</div></td>
+            <td><div class="kpi-col">kit_unit_cost_usd</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">20–30% of submitted charge</span></td>
+            <td class="kpi-notes">Benchmark: supply cost should not exceed 30% of case revenue; GPO contracts help</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">4-Week Demand Forecast Accuracy</div></td>
+            <td><div class="kpi-col">projected_demand_4wk vs actual</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">±10% variance</span></td>
+            <td class="kpi-notes">Drives just-in-time procurement; large errors cause overstocking or stockouts</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase5 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 6 — INPATIENT MONITORING & NURSING CARE
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase6">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#F5F3FF;color:#7C3AED;">6</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Inpatient Monitoring & Nursing Care</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-hr">Human Resources</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p6','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p6','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p6','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p6','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p6','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p6','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p6-overview">
+      <p class="overview-text">Post-surgery recovery and inpatient care is the longest phase by time and the one where the most HR-operational cross-domain dynamics occur. Nurse burnout, patient load, overtime hours, and shift intensity directly determine whether safety incidents occur and whether CAHPS experience scores are favorable. This is also where HAIs are tracked, length of stay accumulates, and bed occupancy is actively managed.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Duration</div><div class="overview-card-value">los_days: benchmark 4.5 days general medicine; driven by severity_index</div></div>
+        <div class="overview-card"><div class="overview-card-label">Primary Risk</div><div class="overview-card-value">HAI, medication errors, patient falls — all correlated with nurse staffing ratios</div></div>
+        <div class="overview-card"><div class="overview-card-label">HR-Safety Link</div><div class="overview-card-value">patients_per_nurse_ratio × burnout → safety_incident_flag probability</div></div>
+        <div class="overview-card"><div class="overview-card-label">CAHPS Scores Formed</div><div class="overview-card-value">Patient experience scores are shaped by nursing quality during this phase</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p6-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">👩‍⚕️</span><div><div style="font-size:12px;font-weight:600;">Primary Nurse (RN/LPN)</div><div class="stakeholder-role">Continuous monitoring, medication administration</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">🏆</span><div><div style="font-size:12px;font-weight:600;">Charge Nurse</div><div class="stakeholder-role">Unit management, float pool coordination</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🩺</span><div><div style="font-size:12px;font-weight:600;">Attending Physician</div><div class="stakeholder-role">Daily rounds, order management</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🫁</span><div><div style="font-size:12px;font-weight:600;">Specialist / Consultant</div><div class="stakeholder-role">Disease-specific management (cardiology, endocrine)</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">🛡️</span><div><div style="font-size:12px;font-weight:600;">Infection Control Nurse</div><div class="stakeholder-role">HAI surveillance and prevention protocols</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Recovery, compliance with care plan</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p6-data">
+      <div class="data-section-title">Operational — LOS & Capacity</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">los_days</span>
+        <span class="col-chip col-operational">unit_assigned</span>
+        <span class="col-chip col-operational">bed_occupancy_pct</span>
+      </div>
+      <div class="data-section-title">Operational — Safety Events</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">safety_incident_flag</span>
+        <span class="col-chip col-operational">incident_type</span>
+        <span class="col-chip col-operational">incident_severity</span>
+      </div>
+      <div class="data-section-title">HR — Nurse State & Load</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">nurse_emp_id</span>
+        <span class="col-chip col-hr">nurse_role</span>
+        <span class="col-chip col-hr">nurse_unit</span>
+        <span class="col-chip col-hr">nurse_tenure_years</span>
+        <span class="col-chip col-hr">nurse_fte</span>
+        <span class="col-chip col-hr">shift_hours</span>
+        <span class="col-chip col-hr">patients_per_nurse_ratio</span>
+        <span class="col-chip col-hr">overtime_hours</span>
+        <span class="col-chip col-hr">burnout_exhaustion_mbi</span>
+        <span class="col-chip col-hr">burnout_cynicism_mbi</span>
+        <span class="col-chip col-hr">turnover_risk_index</span>
+      </div>
+      <div class="data-section-title">HR — CAHPS Patient Experience (Formed Here)</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">cahps_nurse_communication</span>
+        <span class="col-chip col-hr">cahps_doctor_communication</span>
+        <span class="col-chip col-hr">cahps_responsiveness</span>
+        <span class="col-chip col-hr">cahps_pain_management</span>
+        <span class="col-chip col-hr">cahps_cleanliness</span>
+        <span class="col-chip col-hr">cahps_quietness</span>
+      </div>
+      <div class="data-section-title">Quality — PDSA Cycle</div>
+      <div class="columns-grid">
+        <span class="col-chip col-quality">pdsa_cycle_id</span>
+        <span class="col-chip col-quality">himss_emram_stage</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ The Core HR-Safety-CAHPS Cascade</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-hr">patients_per_nurse_ratio ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-hr">burnout_exhaustion_mbi ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-hr">overtime_hours ↑</span><span class="corr-arrow">→</span><span class="corr-chip col-operational">safety_incident_flag ↑</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-hr">burnout_cynicism_mbi ↑</span><span class="corr-arrow">→</span><span class="corr-chip col-hr">cahps_nurse_communication ↓</span><span class="corr-arrow">+</span><span class="corr-chip col-hr">cahps_responsiveness ↓</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-operational">bed_occupancy_pct &gt; 90%</span><span class="corr-arrow">→</span><span class="corr-chip col-hr">cahps_responsiveness ↓</span><span class="corr-arrow">+</span><span class="corr-chip col-operational">safety_incident_flag probability ↑</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-hr">nurse_tenure_years ↓</span><span class="corr-arrow">→</span><span class="corr-chip col-hr">turnover_risk_index ↑</span><span class="corr-arrow">→</span><span class="corr-effect">early warning for unit-level staffing planning</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p6-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-jci"><h4>JCI 8th Ed — IPSG Goals 3, 5, 6</h4><p>IPSG 3: Safe medication management. IPSG 5: Hand hygiene compliance (HAI prevention). IPSG 6: Fall risk assessment and prevention protocol. All generate operational data.</p></div>
+        <div class="standard-card std-iso"><h4>ISO 7101 — PDSA in Action</h4><p>When safety_incident_flag = 1, pdsa_cycle_id is created. DO phase = implementing the improvement (e.g., new hand hygiene protocol). Root cause analysis follows within 72 hours.</p></div>
+        <div class="standard-card std-cahps"><h4>CAHPS / HCAHPS Survey</h4><p>All 7 CAHPS dimensions in the dataset are formed during inpatient nursing care: nurse communication, doctor communication, responsiveness, pain management, discharge info, cleanliness, and quietness.</p></div>
+        <div class="standard-card std-himss"><h4>HIMSS EMRAM Stage 6–7</h4><p>himss_emram_stage measures digital maturity. Stage 7 requires closed-loop medication administration (eMAR at bedside), real-time nursing documentation, and HIE participation — all reducing safety incidents.</p></div>
+        <div class="standard-card std-hedis"><h4>HEDIS — Care Gap Management</h4><p>During inpatient stay, open care gaps (e.g., hedis_hba1c_poor_control) trigger clinical intervention. Post-discharge follow-up compliance also begins to be planned in this phase.</p></div>
+        <div class="standard-card std-cms"><h4>CMS — HACRP & HRRP</h4><p>Hospital-Acquired Condition Reduction Program: CMS penalizes hospitals in the lowest performance quartile for HAIs. safety_incident_flag and incident_type directly feed HACRP reporting.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p6-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Accruing</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Daily facility per-diem charge × los_days</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Daily nursing care charge (per-hour rate × nurse_fte)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Ancillary charges: physical therapy, respiratory therapy, daily labs</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Costs Incurred</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Nursing labor (largest single cost: ~$75–$110/hour RN fully loaded)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Overtime premium: 1.5× base rate when overtime_hours &gt; threshold</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>HAI treatment cost: MRSA adds $40,000–$60,000 per incident</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>CMS HAC penalty: 1% Medicare payment reduction for lowest quartile</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Consumable supply cost per bed-day (IV bags, catheters, bandages)</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">Nursing_labor_cost = shift_hours × nurse_hourly_rate × nurse_fte × [1.5 if overtime]<br>HAI_financial_impact = P(safety_incident_flag=1|burnout,ratio) × avg_HAI_treatment_cost<br>P(safety_incident_flag) ↑ as patients_per_nurse_ratio ↑ AND burnout_exhaustion_mbi ↑</div>
+    </div>
+
+    <div class="tab-panel" id="p6-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">Average Length of Stay (ALOS)</div></td>
+            <td><div class="kpi-col">los_days</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">4.5 days general / 8–12 days ICU</span></td>
+            <td class="kpi-notes">Every extra day costs ~$2,000–$3,500 in facility costs; DRG pays fixed regardless</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Safety Incident Rate</div></td>
+            <td><div class="kpi-col">safety_incident_flag, incident_type</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 2 per 1,000 patient days</span></td>
+            <td class="kpi-notes">JCI IPSG measure; never events (wrong-site surgery) = immediate CMS non-payment</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Nurse Burnout Prevalence (High MBI)</div></td>
+            <td><div class="kpi-col">burnout_exhaustion_mbi, burnout_cynicism_mbi</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 25% of any unit</span></td>
+            <td class="kpi-notes">Alert threshold: &gt;25% of unit scoring high MBI requires immediate intervention</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Nurse Turnover Risk Index</div></td>
+            <td><div class="kpi-col">turnover_risk_index</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 0.30</span></td>
+            <td class="kpi-notes">Each nurse departure costs $50,000–$90,000 to replace; index &gt;0.7 = intervention needed</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Overtime Hours per FTE</div></td>
+            <td><div class="kpi-col">overtime_hours, nurse_fte</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 10 hrs/month</span></td>
+            <td class="kpi-notes">Leading predictor of burnout and medication errors; also increases labor cost 50%</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">CAHPS Nurse Communication Score</div></td>
+            <td><div class="kpi-col">cahps_nurse_communication</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 4.2 / 5.0</span></td>
+            <td class="kpi-notes">Top driver of overall HCAHPS rating; affects CMS Value-Based Purchasing bonus</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Nurse Voluntary Turnover Rate</div></td>
+            <td><div class="kpi-col">turnover_risk_index, nurse_tenure_years</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 15% annually</span></td>
+            <td class="kpi-notes">US average ~22%; target &lt;15%; each 1% reduction saves ~$500K in medium hospital</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase6 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 7 — DISCHARGE PLANNING & CLINICAL CODING
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase7">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#FFFBEB;color:#D97706;">7</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Discharge Planning & Clinical Coding</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p7','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p7','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p7','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p7','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p7','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p7','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p7-overview">
+      <p class="overview-text">The patient is medically cleared to leave. A discharge summary is written, discharge instructions are explained to the patient (a CAHPS dimension), and the discharge disposition is recorded. Simultaneously, medical coders finalize the ICD-10 and CPT codes for the entire encounter — this is the last quality gate before the claim is submitted. The 30-day readmission window clock starts at discharge_timestamp.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Primary Clinical Act</div><div class="overview-card-value">Discharge summary, medication reconciliation, discharge instructions</div></div>
+        <div class="overview-card"><div class="overview-card-label">Financial Gate</div><div class="overview-card-value">Clinical coding finalized → DRG locked → claim ready to submit</div></div>
+        <div class="overview-card"><div class="overview-card-label">Readmission Clock</div><div class="overview-card-value">30-day readmission window opens at discharge_timestamp</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resources</div><div class="overview-card-value">Encounter (status: finished), Claim (assembled), CarePlan, AllergyIntolerance</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p7-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🩺</span><div><div style="font-size:12px;font-weight:600;">Attending Physician</div><div class="stakeholder-role">Signs discharge order, writes summary</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">👩‍⚕️</span><div><div style="font-size:12px;font-weight:600;">Discharge Nurse</div><div class="stakeholder-role">Delivers discharge instructions (CAHPS)</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">📝</span><div><div style="font-size:12px;font-weight:600;">Medical Coder</div><div class="stakeholder-role">Finalizes ICD-10/CPT codes, DRG assignment</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🏠</span><div><div style="font-size:12px;font-weight:600;">Case Manager / Social Worker</div><div class="stakeholder-role">Arranges post-discharge care (SNF, home health)</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient / Family</div><div class="stakeholder-role">Receives instructions, arranges transport</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p7-data">
+      <div class="data-section-title">Operational — Discharge Timestamps</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">discharge_timestamp</span>
+        <span class="col-chip col-operational">los_days</span>
+      </div>
+      <div class="data-section-title">Clinical — Outcome Flags</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">readmission_30d_flag</span>
+        <span class="col-chip col-clinical">medication_adherence_pdc</span>
+      </div>
+      <div class="data-section-title">HR — Discharge CAHPS Dimension</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">cahps_discharge_info</span>
+        <span class="col-chip col-hr">cahps_care_transition</span>
+      </div>
+      <div class="data-section-title">Financial — Claim Assembly</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">claim_id</span>
+        <span class="col-chip col-financial">icd10_code</span>
+        <span class="col-chip col-financial">cpt_code</span>
+        <span class="col-chip col-financial">drg_weight</span>
+        <span class="col-chip col-financial">submitted_charge_usd</span>
+        <span class="col-chip col-financial">npi_billing</span>
+        <span class="col-chip col-financial">payer</span>
+      </div>
+      <div class="data-section-title">Financial — FWA Flags Assessed</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">fraud_upcoding_flag</span>
+        <span class="col-chip col-financial">fraud_duplicate_flag</span>
+        <span class="col-chip col-financial">fraud_unbundling_flag</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ Readmission Risk Final Calculation</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">severity_index ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">comorbidity_count ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">medication_adherence_pdc ↓</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">age ↑</span><span class="corr-arrow">→</span><span class="corr-chip col-clinical">readmission_30d_flag probability ↑</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-hr">cahps_discharge_info ↓</span><span class="corr-arrow">→</span><span class="corr-effect">patient less likely to follow discharge instructions → readmission risk ↑</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p7-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Encounter Closure</h4><p>Encounter.status = "finished." Encounter.hospitalization.dischargeDisposition populated. Claim resource assembled with all linked Condition, Procedure, and MedicationRequest resources.</p></div>
+        <div class="standard-card std-icd"><h4>ICD-10-CM — Final Code Lock</h4><p>Medical coder finalizes principal diagnosis and all secondary codes. Complication and comorbidity (CC/MCC) codes critically affect DRG assignment and payment tier.</p></div>
+        <div class="standard-card std-cahps"><h4>CAHPS — Discharge Dimensions</h4><p>cahps_discharge_info measures how clearly discharge instructions were explained. cahps_care_transition measures coordination. Both directly predict 30-day readmission probability.</p></div>
+        <div class="standard-card std-jci"><h4>JCI 8th Ed — Medical Records</h4><p>JCI requires complete discharge summary within 24 hours of discharge. All ICD codes, procedures, patient condition at discharge, and follow-up plan must be documented.</p></div>
+        <div class="standard-card std-cms"><h4>CMS — HRRP (Readmission Penalties)</h4><p>Hospital Readmissions Reduction Program: CMS reduces payments up to 3% for excess readmissions in AMI, Heart Failure, Pneumonia, COPD, Hip/Knee, CABG. readmission_30d_flag feeds HRRP reporting.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p7-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Revenue Locked Here</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>DRG weight finalized → total Medicare payment amount is set</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Chargemaster totals assembled: all per-diem, OR, supply, ancillary charges</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Clean claim submission avoids denial → faster payment</span></div>
+        </div>
+        <div class="fin-block fin-block-neutral">
+          <h4>⚠️ FWA Final Risk Assessment</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>fraud_upcoding_flag (~4%): submitted_charge inflated 1.4–2.2×</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>fraud_unbundling_flag (~2%): services billed separately that should be grouped</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>fraud_duplicate_flag (~1.5%): same service billed twice</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">Final submitted_charge_usd = Σ(per_diem × los_days) + OR_charge + kit_unit_cost_usd + ancillary_charges<br>HRRP_penalty_risk = f(readmission_30d_flag rate vs national benchmark)<br>FWA_flag_any = fraud_upcoding_flag OR fraud_duplicate_flag OR fraud_unbundling_flag</div>
+    </div>
+
+    <div class="tab-panel" id="p7-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">30-Day Readmission Rate</div></td>
+            <td><div class="kpi-col">readmission_30d_flag</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 15%</span></td>
+            <td class="kpi-notes">CMS HRRP target; excess readmissions trigger up to 3% Medicare payment reduction</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">CAHPS Discharge Information Score</div></td>
+            <td><div class="kpi-col">cahps_discharge_info</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 4.0 / 5.0</span></td>
+            <td class="kpi-notes">Strongest modifiable predictor of readmission; also CMS Value-Based Purchasing input</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">CAHPS Care Transition Score</div></td>
+            <td><div class="kpi-col">cahps_care_transition</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 3.8 / 5.0</span></td>
+            <td class="kpi-notes">Added to HCAHPS in 2012; correlates with post-discharge adherence and SNF placement quality</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Discharge Summary Completion Rate</div></td>
+            <td><div class="kpi-col">discharge_timestamp (proxy)</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">100% within 24 hrs (JCI)</span></td>
+            <td class="kpi-notes">JCI mandatory requirement; incomplete summaries delay claim submission</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">FWA Flag Rate</div></td>
+            <td><div class="kpi-col">fraud_upcoding_flag + fraud_duplicate_flag + fraud_unbundling_flag</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 5% of claims</span></td>
+            <td class="kpi-notes">Dataset baseline: ~7.5% combined; analytics platform should match external audit findings ±10%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase7 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 8 — CLAIMS ADJUDICATION & REVENUE CYCLE
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase8">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#FFFBEB;color:#D97706;">8</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Claims Adjudication & Revenue Cycle</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-financial">Financial</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p8','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p8','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p8','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p8','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p8','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p8','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p8-overview">
+      <p class="overview-text">The claim is submitted electronically to the payer. The payer adjudicates: they apply the contractual discount, calculate the allowed amount, and either pay or deny. Denial reason codes (CO-4, CO-16, CO-18, CO-50, CO-197) generate actionable analytics signals. The hospital's billing team tracks Days in AR and pursues denied claims. This phase is the revenue realization point — where the chargemaster value becomes actual cash.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Process</div><div class="overview-card-value">Claim submitted → payer adjudicates → EOB returned → payment or denial</div></div>
+        <div class="overview-card"><div class="overview-card-label">Key Metric</div><div class="overview-card-value">Days in Accounts Receivable: target &lt;40 days; &gt;60 = billing problem</div></div>
+        <div class="overview-card"><div class="overview-card-label">Denial Management</div><div class="overview-card-value">CARC denial codes analyzed to identify root causes and appeal patterns</div></div>
+        <div class="overview-card"><div class="overview-card-label">FHIR Resources</div><div class="overview-card-value">Claim, ClaimResponse, ExplanationOfBenefit, PaymentNotice</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p8-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">💳</span><div><div style="font-size:12px;font-weight:600;">Payer / Insurance Company</div><div class="stakeholder-role">Adjudicates claim, applies contractual rate</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">💼</span><div><div style="font-size:12px;font-weight:600;">Billing Specialist (RCM)</div><div class="stakeholder-role">Submits claim, tracks AR, manages denials</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">🔍</span><div><div style="font-size:12px;font-weight:600;">Compliance / FWA Analyst</div><div class="stakeholder-role">Monitors fraud flags, responds to RAC audits</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Responsible for co-pay / deductible balance</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#EFF6FF;">⚖️</span><div><div style="font-size:12px;font-weight:600;">OIG / CMS Auditor</div><div class="stakeholder-role">RAC audit; FWA investigation</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p8-data">
+      <div class="data-section-title">Financial — Full Revenue Cycle Record</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">claim_id</span>
+        <span class="col-chip col-financial">payer</span>
+        <span class="col-chip col-financial">npi_billing</span>
+        <span class="col-chip col-financial">drg_weight</span>
+        <span class="col-chip col-financial">submitted_charge_usd</span>
+        <span class="col-chip col-financial">allowed_amount_usd</span>
+        <span class="col-chip col-financial">patient_responsibility_usd</span>
+      </div>
+      <div class="data-section-title">Financial — FWA Detection Features</div>
+      <div class="columns-grid">
+        <span class="col-chip col-financial">fraud_upcoding_flag</span>
+        <span class="col-chip col-financial">fraud_duplicate_flag</span>
+        <span class="col-chip col-financial">fraud_unbundling_flag</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ Payer Mix Impact on Revenue</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-financial">payer = "Medicare"</span><span class="corr-arrow">→</span><span class="corr-effect">allowed_amount = drg_weight × CMS base rate (lowest contractual rate)</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-financial">payer = "Commercial"</span><span class="corr-arrow">→</span><span class="corr-effect">allowed_amount = submitted_charge × (1 − contractual_discount); typically 40–60% off chargemaster</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-financial">payer = "Self-Pay"</span><span class="corr-arrow">→</span><span class="corr-effect">patient_responsibility_usd = full allowed_amount; highest bad-debt risk</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-financial">fraud_upcoding_flag = 1</span><span class="corr-arrow">→</span><span class="corr-chip col-financial">submitted_charge_usd × 1.4–2.2</span><span class="corr-arrow">→</span><span class="corr-effect">learnable signal: high charge vs clinical documentation incongruence</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p8-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-fhir"><h4>FHIR R4 — Claim & ClaimResponse</h4><p>Claim resource contains all billing elements. ClaimResponse (payer response) contains adjudication details: allowed amount, contractual adjustments, denial codes (mapped as adjudication.reason).</p></div>
+        <div class="standard-card std-cms"><h4>CMS — CARC Denial Reason Codes</h4><p>Standard Claim Adjustment Reason Codes: CO-4 (service not covered), CO-16 (missing information), CO-18 (duplicate), CO-50 (not medically necessary), CO-197 (pre-auth required), CO-11 (diagnosis inconsistent). Dataset includes denial_reason_code.</p></div>
+        <div class="standard-card std-drg"><h4>DRG — Prospective Payment System</h4><p>Medicare pays hospitals a fixed amount based on drg_weight × base_rate, regardless of actual submitted_charge. Understanding DRG payment vs charge is key to margin analysis.</p></div>
+        <div class="standard-card std-hipaa"><h4>HIPAA — 837P/837I Transaction Standards</h4><p>Electronic claim submission must follow HIPAA 5010 transaction standards (837I for institutional, 837P for professional claims). Non-compliant formats cause automatic rejection.</p></div>
+        <div class="standard-card std-jci"><h4>JCI — Documentation Standards</h4><p>Claim denials traced to missing JCI-required documentation (incomplete discharge summary, missing consent) create a feedback loop from Financial back to Clinical Quality.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p8-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Cash Inflow</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>allowed_amount_usd received from payer upon claim approval</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>patient_responsibility_usd collected via billing statement or at point of care</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Successful appeals of denied claims recover denied revenue</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Revenue Leakage</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Contractual adjustment: submitted_charge minus allowed_amount (40–60% of chargemaster)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Denied claims: cost of rework + potential write-off if appeal fails</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Bad debt: unrecovered patient_responsibility_usd from self-pay patients</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>RAC audit repayments + False Claims Act penalties (FWA exposure)</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">allowed_amount_usd = submitted_charge_usd × (1 − payer_discount_rate)<br>contractual_adjustment = submitted_charge_usd − allowed_amount_usd<br>Net Patient Revenue (NPR) = Σ(allowed_amount_usd) − bad_debt − denials_written_off<br>Days_in_AR = avg(payment_date − claim_submission_date)</div>
+    </div>
+
+    <div class="tab-panel" id="p8-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">Claim Denial Rate (First Pass)</div></td>
+            <td><div class="kpi-col">fraud flags + payer (proxy)</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 5%</span></td>
+            <td class="kpi-notes">Industry benchmark; every 1% above 5% = significant revenue delay and rework cost</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Days in Accounts Receivable</div></td>
+            <td><div class="kpi-col">claim_id, payer, submitted_charge_usd</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 40 days</span></td>
+            <td class="kpi-notes">&gt;60 days signals billing bottleneck; Medicare typically pays within 14 days; commercial 30–45 days</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Net Revenue per Adjusted Admission</div></td>
+            <td><div class="kpi-col">allowed_amount_usd / drg_weight</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">Varies by case mix; track trend</span></td>
+            <td class="kpi-notes">Core hospital financial health metric; declining trend = payer pressure or coding issues</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">FWA Detection Rate</div></td>
+            <td><div class="kpi-col">fraud_upcoding_flag, fraud_duplicate_flag, fraud_unbundling_flag</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher detection</span></td>
+            <td><span class="benchmark-badge">Match audit findings ±10%</span></td>
+            <td class="kpi-notes">Analytics model should flag ~7.5% of claims (4% upcoding + 2% unbundling + 1.5% duplicate)</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Payer Mix (Medicare/Medicaid %)</div></td>
+            <td><div class="kpi-col">payer</div></td>
+            <td><span class="kpi-dir dir-up">↑ Monitor</span></td>
+            <td><span class="benchmark-badge">Medicare ≤ 45% of mix ideal</span></td>
+            <td class="kpi-notes">Higher Medicare/Medicaid % = lower reimbursement rates; affects NPR significantly</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Contractual Adjustment Rate</div></td>
+            <td><div class="kpi-col">(submitted_charge_usd − allowed_amount_usd) / submitted_charge_usd</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">40–60% (typical)</span></td>
+            <td class="kpi-notes">Measures chargemaster inflation vs actual collection; drives chargemaster strategy decisions</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase8 -->
+
+<div class="phase-connector"><span class="connector-line"></span>↓<span class="connector-line"></span></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     PHASE 9 — POST-DISCHARGE FOLLOW-UP & READMISSION
+══════════════════════════════════════════════════════════════════ -->
+<div class="phase-card" id="phase9">
+  <div class="phase-header" onclick="togglePhase(this)">
+    <div class="phase-header-left">
+      <div class="phase-number" style="background:#FFF1F2;color:#E11D48;">9</div>
+      <div class="phase-title-block">
+        <h2 style="color:#0F172A;">Post-Discharge Follow-Up & Readmission</h2>
+        <div class="phase-meta">
+          <span class="pillar-tag pillar-clinical">Clinical</span>
+          <span class="pillar-tag pillar-operational">Operational</span>
+          <span class="pillar-tag pillar-financial">Financial</span>
+        </div>
+      </div>
+    </div>
+    <div class="phase-toggle">▾</div>
+  </div>
+
+  <div class="phase-body">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab(this,'p9','overview')">Overview</div>
+      <div class="tab" onclick="switchTab(this,'p9','stakeholders')">Stakeholders</div>
+      <div class="tab" onclick="switchTab(this,'p9','data')">Data Generated</div>
+      <div class="tab" onclick="switchTab(this,'p9','standards')">Standards</div>
+      <div class="tab" onclick="switchTab(this,'p9','financials')">Financials</div>
+      <div class="tab" onclick="switchTab(this,'p9','kpis')">KPIs</div>
+    </div>
+
+    <div class="tab-panel active" id="p9-overview">
+      <p class="overview-text">The 30-day window after discharge is the highest-risk period for readmission. Hospitals with proactive follow-up programs — phone calls within 48 hours, medication reconciliation checks, telehealth check-ins — significantly reduce readmission rates. If the patient is readmitted within 30 days, the encounter lifecycle restarts from Phase 2, but the financial implications are different: CMS may not reimburse for the readmission and may penalize the hospital under HRRP. This phase closes the clinical quality loop and feeds the PDSA STUDY phase.</p>
+      <div class="overview-grid">
+        <div class="overview-card"><div class="overview-card-label">Window</div><div class="overview-card-value">30 days post discharge_timestamp</div></div>
+        <div class="overview-card"><div class="overview-card-label">Key Intervention</div><div class="overview-card-value">48-hour follow-up call, medication reconciliation, telehealth check-in</div></div>
+        <div class="overview-card"><div class="overview-card-label">Financial Risk</div><div class="overview-card-value">readmission_30d_flag = 1 → HRRP penalty risk + unpaid readmission cost</div></div>
+        <div class="overview-card"><div class="overview-card-label">Cycle Close</div><div class="overview-card-value">PDSA cycle STUDY phase: did quality interventions reduce readmission? → ACT phase next</div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p9-stakeholders">
+      <div class="stakeholders-grid">
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">📞</span><div><div style="font-size:12px;font-weight:600;">Care Coordinator / Case Manager</div><div class="stakeholder-role">48-hour follow-up call, care plan review</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🩺</span><div><div style="font-size:12px;font-weight:600;">Primary Care Physician</div><div class="stakeholder-role">Post-discharge clinic visit, ongoing management</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFF1F2;">👤</span><div><div style="font-size:12px;font-weight:600;">Patient</div><div class="stakeholder-role">Medication adherence, symptom monitoring, follow-up attendance</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#F5F3FF;">💊</span><div><div style="font-size:12px;font-weight:600;">Community Pharmacist</div><div class="stakeholder-role">Fills prescriptions, counsels on adherence (PDC)</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#ECFDF5;">🏠</span><div><div style="font-size:12px;font-weight:600;">Home Health Agency</div><div class="stakeholder-role">In-home nursing visits for high-risk patients</div></div></div>
+        <div class="stakeholder-chip"><span class="stakeholder-icon" style="background:#FFFBEB;">💳</span><div><div style="font-size:12px;font-weight:600;">Payer / CMS</div><div class="stakeholder-role">Monitors readmission rate; applies HRRP penalties</div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p9-data">
+      <div class="data-section-title">Clinical — Outcome & Readmission</div>
+      <div class="columns-grid">
+        <span class="col-chip col-clinical">readmission_30d_flag</span>
+        <span class="col-chip col-clinical">medication_adherence_pdc</span>
+        <span class="col-chip col-clinical">severity_index</span>
+        <span class="col-chip col-clinical">comorbidity_count</span>
+      </div>
+      <div class="data-section-title">HR — CAHPS Post-Discharge Dimensions</div>
+      <div class="columns-grid">
+        <span class="col-chip col-hr">cahps_discharge_info</span>
+        <span class="col-chip col-hr">cahps_care_transition</span>
+      </div>
+      <div class="data-section-title">Quality — PDSA Study Phase</div>
+      <div class="columns-grid">
+        <span class="col-chip col-quality">pdsa_cycle_id</span>
+        <span class="col-chip col-quality">hedis_hba1c_poor_control</span>
+        <span class="col-chip col-quality">hedis_hba1c_tested</span>
+        <span class="col-chip col-quality">himss_emram_stage</span>
+      </div>
+      <div class="data-section-title">Operational — If Readmitted (Phase Loop)</div>
+      <div class="columns-grid">
+        <span class="col-chip col-operational">triage_timestamp</span>
+        <span class="col-chip col-operational">admit_timestamp</span>
+        <span class="col-chip col-operational">encounter_id</span>
+      </div>
+      <div class="correlation-box">
+        <h4>⚡ Readmission Prediction Model Inputs</h4>
+        <div class="correlation-row">
+          <span class="corr-chip col-clinical">severity_index ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">age ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">comorbidity_count ↑</span><span class="corr-arrow">+</span><span class="corr-chip col-clinical">medication_adherence_pdc ↓</span><span class="corr-arrow">→</span><span class="corr-chip col-clinical">readmission_30d_flag = 1</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-hr">cahps_discharge_info ↓</span><span class="corr-arrow">+</span><span class="corr-chip col-hr">cahps_care_transition ↓</span><span class="corr-arrow">→</span><span class="corr-effect">patient less likely to follow up → higher readmission probability</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-quality">himss_emram_stage = 7</span><span class="corr-arrow">→</span><span class="corr-effect">HIE access enables PCP to receive discharge summary electronically → faster follow-up → lower readmission rate</span>
+        </div>
+        <div class="correlation-row">
+          <span class="corr-chip col-quality">pdsa_cycle_id (STUDY phase)</span><span class="corr-arrow">→</span><span class="corr-effect">Compare pre/post quality intervention readmission rates → ACT phase if improvement confirmed</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p9-standards">
+      <div class="standards-grid">
+        <div class="standard-card std-cms"><h4>CMS — HRRP Penalties</h4><p>Hospital Readmissions Reduction Program: excess 30-day readmissions for AMI, CHF, Pneumonia, COPD, Hip/Knee arthroplasty, and CABG result in up to 3% Medicare payment reduction across ALL Medicare cases (not just readmissions).</p></div>
+        <div class="standard-card std-hedis"><h4>HEDIS 2025 — Care Continuity</h4><p>HEDIS Transitions of Care measure: % of patients with a follow-up visit within 7 days of discharge. hedis_hba1c_poor_control flags care gaps requiring outreach. NCQA uses these for health plan ratings.</p></div>
+        <div class="standard-card std-iso"><h4>ISO 7101 — PDSA STUDY & ACT</h4><p>pdsa_cycle_id closes here. STUDY: compare readmission rates before/after quality intervention. ACT: if improvement confirmed, scale protocol hospital-wide. If not, revise and restart PLAN phase.</p></div>
+        <div class="standard-card std-fhir"><h4>FHIR R4 — CarePlan Resource</h4><p>CarePlan.activity (follow-up visits planned), CarePlan.goal (reduce readmission risk). If patient is readmitted, a new Encounter resource is created linked to the original patient_id, enabling longitudinal tracking.</p></div>
+        <div class="standard-card std-himss"><h4>HIMSS EMRAM Stage 7 — HIE</h4><p>Stage 7 requires Health Information Exchange (HIE) participation. Discharge summary flows electronically to PCP and community providers. himss_emram_stage covariate shows its impact on readmission reduction.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="p9-financials">
+      <div class="fin-grid">
+        <div class="fin-block fin-block-inflow">
+          <h4>💰 Potential Revenue (if Readmitted)</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>New encounter = new claim = new DRG payment (may not be reimbursed by CMS for same condition within 30 days)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Outpatient follow-up visit billing (lower revenue, but preferred)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Telehealth follow-up: CPT 99214/99215 via telehealth modifier</span></div>
+        </div>
+        <div class="fin-block fin-block-outflow">
+          <h4>💸 Readmission Costs & Penalties</h4>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>HRRP penalty: up to 3% reduction on all Medicare payments (can = $1M–$10M annually for large hospital)</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>CMS readmission claim non-payment: hospital absorbs full cost of readmission care</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Care coordination program cost: ~$200–$500 per patient for 30-day follow-up program</span></div>
+          <div class="fin-item"><span class="fin-arrow">→</span><span>Readmission average cost: $15,000–$25,000 per inpatient episode (borne by hospital)</span></div>
+        </div>
+      </div>
+      <div class="fin-formula">HRRP_penalty = f(readmission_30d_flag rate − national_benchmark) × total_Medicare_revenue × max_penalty_rate (3%)<br>ROI_of_follow_up_program = (readmissions_prevented × avg_readmission_cost) − program_cost<br>Typical ROI: $15,000 saved per prevented readmission vs $500 follow-up cost → 30:1 return</div>
+    </div>
+
+    <div class="tab-panel" id="p9-kpis">
+      <table class="kpi-table">
+        <thead><tr><th>KPI</th><th>Column(s)</th><th>Direction</th><th>Benchmark</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><div class="kpi-name">30-Day Readmission Rate</div></td>
+            <td><div class="kpi-col">readmission_30d_flag</div></td>
+            <td><span class="kpi-dir dir-down">↓ Lower</span></td>
+            <td><span class="benchmark-badge">&lt; 15% overall / &lt; 20% CHF</span></td>
+            <td class="kpi-notes">CMS HRRP: national average ~15%; above benchmark triggers penalty calculation</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Post-Discharge Follow-Up Rate</div></td>
+            <td><div class="kpi-col">cahps_care_transition (proxy)</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 85% within 48 hrs (target)</span></td>
+            <td class="kpi-notes">48-hour call compliance is the #1 modifiable readmission predictor; HEDIS Transitions of Care measure</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Medication Adherence at Follow-Up (PDC)</div></td>
+            <td><div class="kpi-col">medication_adherence_pdc</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 0.80 (80%)</span></td>
+            <td class="kpi-notes">PDC &lt;0.80 post-discharge = 2× higher readmission risk; HEDIS medication adherence measure</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">PDSA Cycle Completion Rate</div></td>
+            <td><div class="kpi-col">pdsa_cycle_id</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">100% of flagged incidents</span></td>
+            <td class="kpi-notes">ISO 7101 requirement: every safety event (safety_incident_flag=1) must have a closed PDSA loop</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">HIMSS EMRAM Maturity Score</div></td>
+            <td><div class="kpi-col">himss_emram_stage</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">Stage 6–7 target</span></td>
+            <td class="kpi-notes">Stage 7 hospitals show measurably lower readmission rates due to HIE and analytics capabilities</td>
+          </tr>
+          <tr>
+            <td><div class="kpi-name">Care Transition CAHPS Score</div></td>
+            <td><div class="kpi-col">cahps_care_transition</div></td>
+            <td><span class="kpi-dir dir-up">↑ Higher</span></td>
+            <td><span class="benchmark-badge">≥ 3.8 / 5.0</span></td>
+            <td class="kpi-notes">CMS Value-Based Purchasing dimension; hospitals below national average lose VBP bonus payments</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- /phase9 -->
+
+<!-- FOOTER -->
+<div style="margin-top:60px;padding-top:32px;border-top:1px solid var(--border);color:var(--text-muted);font-size:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:gap;">
+  <div>Healthcare Management Analytics Platform · Business Process Architecture · 92 Columns · 9 Phases · 5 Domains</div>
+  <div style="font-family:'JetBrains Mono',monospace;">SDG Engine v1.0 · FHIR R4 · ICD-10-CM FY2025 · HEDIS 2025</div>
+</div>
+
+</main>
+</div><!-- /main -->
+
+<script>
+// ─── TOGGLE PHASE ─────────────────────────────────────────
+function togglePhase(header) {
+  const body = header.nextElementSibling;
+  const toggle = header.querySelector('.phase-toggle');
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+}
+
+// ─── SWITCH TAB ───────────────────────────────────────────
+function switchTab(tab, phaseId, panelId) {
+  // deactivate all tabs in this phase
+  const allTabs = tab.parentElement.querySelectorAll('.tab');
+  allTabs.forEach(t => t.classList.remove('active'));
+  tab.classList.add('active');
+
+  // deactivate all panels in this phase
+  const phaseBody = tab.closest('.phase-body');
+  const allPanels = phaseBody.querySelectorAll('.tab-panel');
+  allPanels.forEach(p => p.classList.remove('active'));
+
+  // activate the target panel
+  const target = document.getElementById(phaseId + '-' + panelId);
+  if (target) target.classList.add('active');
+}
+
+// ─── OPEN FIRST PHASE ON LOAD ─────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const firstHeader = document.querySelector('.phase-header');
+  if (firstHeader) togglePhase(firstHeader);
+});
+
+// ─── INTERSECTION OBSERVER FOR NAV HIGHLIGHTS ─────────────
+const phases = document.querySelectorAll('.phase-card');
+const navLinks = document.querySelectorAll('.pt-item');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { threshold: 0.3, rootMargin: '-200px 0px -50% 0px' });
+
+phases.forEach(p => observer.observe(p));
+
+// ─── SIDENAV ACTIVE STATE ──────────────────────────────────
+const sideLinks = document.querySelectorAll('.sidenav-item');
+const sideObserver = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      sideLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { threshold: 0.4, rootMargin: '-200px 0px -40% 0px' });
+
+phases.forEach(p => sideObserver.observe(p));
+</script>
+
+</body>
+</html>

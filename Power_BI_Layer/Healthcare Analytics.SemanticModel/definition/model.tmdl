@@ -1,0 +1,29 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	dataAccessOptions
+		legacyRedirects
+		returnErrorValuesAsNull
+
+annotation __PBI_TimeIntelligenceEnabled = 0
+
+annotation PBI_ProTooling = ["DevMode","MCP-PBIModeling"]
+
+annotation PBI_QueryOrder = ["gold vw_dim_diagnosis","gold vw_dim_encounter_date","gold vw_dim_nurse","gold vw_dim_patient","gold vw_dim_payer","gold vw_dim_procedure","gold vw_dim_safety_incident","gold vw_dim_surgeon","gold vw_dim_surgical_kit","gold vw_dim_unit","gold vw_dq_clinical_coherence","gold vw_dq_fraud_signal_audit","gold vw_dq_supply_chain_health","gold vw_dq_validation_summary","gold vw_fact_encounter","gold vw_fact_encounter_all","_Measures"]
+
+ref table 'gold vw_dim_diagnosis'
+ref table 'gold vw_dim_encounter_date'
+ref table 'gold vw_dim_nurse'
+ref table 'gold vw_dim_patient'
+ref table 'gold vw_dim_payer'
+ref table 'gold vw_dim_procedure'
+ref table 'gold vw_dim_safety_incident'
+ref table 'gold vw_dim_surgeon'
+ref table 'gold vw_dim_surgical_kit'
+ref table 'gold vw_dim_unit'
+ref table 'gold vw_fact_encounter'
+ref table _Measures
+
+ref cultureInfo en-US
+

@@ -1,0 +1,60 @@
+table 'gold vw_dim_patient'
+	lineageTag: 3b7ff412-73a4-498b-80b8-89a2252cf28c
+
+	column patient_id
+		dataType: string
+		isKey
+		lineageTag: bc826494-2050-46d3-b9b7-1df0cbcec96f
+		summarizeBy: none
+		sourceColumn: patient_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column birth_year
+		dataType: int64
+		formatString: 0
+		lineageTag: 89b30bd6-1023-4fcc-9ed2-79e436f74152
+		summarizeBy: none
+		sourceColumn: birth_year
+
+		annotation SummarizationSetBy = Automatic
+
+	column sex
+		dataType: string
+		lineageTag: ac169c77-bb44-486a-bcc2-fef7eb495624
+		summarizeBy: none
+		sourceColumn: sex
+
+		annotation SummarizationSetBy = Automatic
+
+	column race_ethnicity
+		dataType: string
+		lineageTag: 47415a3a-a14e-450e-80f9-9cbf0997ddc5
+		summarizeBy: none
+		sourceColumn: race_ethnicity
+
+		annotation SummarizationSetBy = Automatic
+
+	column state
+		dataType: string
+		lineageTag: 52b5edd0-68f3-4e16-aae8-eae28991690f
+		dataCategory: StateOrProvince
+		summarizeBy: none
+		sourceColumn: state
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_patient' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_patient = HCWarehouse_N2{[Schema="gold",Item="vw_dim_patient"]}[Data]
+				in
+				    gold_vw_dim_patient
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+

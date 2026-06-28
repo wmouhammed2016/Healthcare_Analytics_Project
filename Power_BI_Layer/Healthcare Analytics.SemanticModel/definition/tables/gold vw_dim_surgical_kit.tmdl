@@ -1,0 +1,62 @@
+table 'gold vw_dim_surgical_kit'
+	lineageTag: a412d866-ebf6-4a72-9ad7-15da2581ffc5
+
+	column surgical_kit_id
+		dataType: string
+		isKey
+		lineageTag: b2597297-9cc5-421d-aab7-ecf902989e60
+		summarizeBy: none
+		sourceColumn: surgical_kit_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column kit_name
+		dataType: string
+		lineageTag: 7c403cdc-c6d7-4a15-bfbd-4b563f1f8abd
+		summarizeBy: none
+		sourceColumn: kit_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column kit_unit_cost_usd
+		dataType: double
+		lineageTag: c4596efc-34d9-408c-9ebe-38dcbe629f1d
+		summarizeBy: none
+		sourceColumn: kit_unit_cost_usd
+
+		annotation SummarizationSetBy = Automatic
+
+		annotation PBI_FormatHint = {"isGeneralNumber":true}
+
+	column kit_reorder_point
+		dataType: int64
+		formatString: 0
+		lineageTag: 8e91415a-84da-4982-b707-9d3e9594cc02
+		summarizeBy: none
+		sourceColumn: kit_reorder_point
+
+		annotation SummarizationSetBy = Automatic
+
+	column kit_lead_time_days
+		dataType: int64
+		formatString: 0
+		lineageTag: f5c91108-562c-476d-ac28-442b5f2b41ce
+		summarizeBy: none
+		sourceColumn: kit_lead_time_days
+
+		annotation SummarizationSetBy = Automatic
+
+	partition 'gold vw_dim_surgical_kit' = m
+		mode: import
+		source =
+				let
+				    Source = Sql.Databases("localhost\SQLEXPRESS"),
+				    HCWarehouse_N2 = Source{[Name="HCWarehouse_N2"]}[Data],
+				    gold_vw_dim_surgical_kit = HCWarehouse_N2{[Schema="gold",Item="vw_dim_surgical_kit"]}[Data]
+				in
+				    gold_vw_dim_surgical_kit
+
+	annotation PBI_ResultType = Table
+
+	annotation PBI_NavigationStepName = Navigation
+
