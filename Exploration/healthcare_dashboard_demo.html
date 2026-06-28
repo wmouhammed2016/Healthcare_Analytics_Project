@@ -656,7 +656,7 @@ body {
       <div class="eh-kpiname">30-Day Readmission Rate</div>
       <div class="eh-value">12.4<span class="unit">%</span></div>
       <div class="eh-meta">Target &lt;15% · ↓ 18% YoY</div>
-      <canvas class="eh-spark" id="spark-clinical"></canvas>
+      <canvas class="eh-spark" id="spark-clinical" height="22"></canvas>
     </div>
 
     <div class="exec-hero operational">
@@ -665,7 +665,7 @@ body {
       <div class="eh-kpiname">ER Door-to-Doctor Time</div>
       <div class="eh-value">34<span class="unit">min</span></div>
       <div class="eh-meta">Target &lt;30 min · ↑ 21% QoQ</div>
-      <canvas class="eh-spark" id="spark-operational"></canvas>
+      <canvas class="eh-spark" id="spark-operational" height="22"></canvas>
     </div>
 
     <div class="exec-hero financial">
@@ -674,7 +674,7 @@ body {
       <div class="eh-kpiname">Claim Denial Rate</div>
       <div class="eh-value">6.8<span class="unit">%</span></div>
       <div class="eh-meta">Target &lt;5% · ↑ 1.8pp post-EHR migration</div>
-      <canvas class="eh-spark" id="spark-financial"></canvas>
+      <canvas class="eh-spark" id="spark-financial" height="22"></canvas>
     </div>
 
     <div class="exec-hero hr">
@@ -683,7 +683,7 @@ body {
       <div class="eh-kpiname">Burnout Prevalence</div>
       <div class="eh-value">31<span class="unit">%</span></div>
       <div class="eh-meta">Alert &gt;25% · ICU & ED driving the spike</div>
-      <canvas class="eh-spark" id="spark-hr"></canvas>
+      <canvas class="eh-spark" id="spark-hr" height="22"></canvas>
     </div>
 
     <div class="exec-hero supply">
@@ -692,7 +692,7 @@ body {
       <div class="eh-kpiname">Stockout Rate</div>
       <div class="eh-value">4.2<span class="unit">/mo</span></div>
       <div class="eh-meta">Target → 0 · ↑ 110% vs Q2</div>
-      <canvas class="eh-spark" id="spark-supply"></canvas>
+      <canvas class="eh-spark" id="spark-supply" height="22"></canvas>
     </div>
   </div>
 
@@ -1838,7 +1838,7 @@ function drawSparkline(canvasId, data, color) {
       }]
     },
     options: {
-      responsive: true,
+      responsive: false,
       maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: { enabled: false } },
       scales: { x: { display: false }, y: { display: false } },
